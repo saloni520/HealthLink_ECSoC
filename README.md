@@ -40,7 +40,6 @@ Modern healthcare systems often lack immediate AI-powered diagnosis support, acc
 | Database     | MongoDB Atlas                      |
 | Authentication | JWT & Cookies                   |
 | AI Integration | OpenAI API |
-| Hosting      | Render.com                         |
 
 ---
 
