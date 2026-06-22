@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthLink Dashboard</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="icon" href="./img/healthlink_logo.png">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        
+        <h1 class="logo">HealthLink</h1>
+        
+        <!-- Hamburger Menu Button -->
+        <button id="menu-toggle" class="menu-toggle">&#9776;</button>
+    
+        <ul class="nav-links" id="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/healthlinkAI">HealthLink AI</a></li>
+            <li><a href="/ourteam">Our Team</a></li>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/contactus">Contact Us</a></li>
+            <li><a href="/logout" class="logout-btn">Logout</a></li>
+        </ul>
+    </nav>
+
+    <!-- Dashboard Section -->
+    <section class="dashboard">
+        <h2>Welcome, <%= user.name %>!</h2>
+        <p>Role: <strong><%= user.role %></strong></p>
+    
+        <% if (user.role === "patient") { %>
+            <div class="dashboard-content">
+                <h3>Your Recent Activities</h3>
+                <ul id="activities">
+                    <li>No recent activities</li>
+                </ul>
+                <a href="/doctors" class="btn">Schedule an Appointment</a>
+            </div>
+        <% } else if (user.role === "doctor") { %>
+            <div class="dashboard-content">
+                <h3>Doctor's Panel</h3>
+                <p>Manage your appointments and patient reports.</p>
+                <a href="/view-appointments" class="btn">View Appointments</a>
+            </div>
+        <% } %>
+    </section>
+    
+    <!-- Chatbot Floating Button -->
+    <div class="chatbot-container">
+        <button id="chatbot-toggle">💬 Chat with AI</button>
+        <div class="chat-window" id="chat-window">
+            <div class="chat-header">
+                <span>AI Assistant</span>
+                <button id="close-chat">✖</button>
+            </div>
+            <div class="chat-body" id="chat-body"></div>
+            <div class="chat-input">
+                <input type="text" id="user-input" placeholder="Ask me anything...">
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>
+    </footer>
+
+    <script src="/js/dashboard.js"></script>
+
+</body>
+</html>

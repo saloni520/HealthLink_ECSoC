@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthLink AI</title>
+    <link href="./css/healthlinkAI.css" rel="stylesheet">
+    <link rel="icon" href="./img/healthlink_logo.png">
+</head>
+<body>
+
+    <div class="overlay">
+        <h1 class="title">HealthLink AI</h1>
+        <p class="subtitle">Futuristic AI-Powered Healthcare Experience</p>
+    </div>
+
+    <canvas id="bg"></canvas>
+
+    <!-- Health AI Analysis Button -->
+<button id="ai-analysis-btn">💡Health AI Analysis</button>
+
+<!-- Popup Window -->
+<div id="ai-popup" class="popup">
+    <div class="popup-content">
+        <h2>Health AI Analysis</h2>
+        <p>Describe your health concern or upload a report for AI analysis.</p>
+        
+        <textarea id="health-message" placeholder="Type your message..."></textarea>
+        <input type="file" id="health-report">
+        
+        <button id="analyze-btn">Analyze</button>
+        <button id="close-popup">Close</button>
+        
+        <p id="ai-response">Waiting for input...</p>
+    </div>
+</div>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="./js/healthlinkAI.js"></script>
+
+</body>
+</html>

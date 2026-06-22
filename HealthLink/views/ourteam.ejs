@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Team - HealthLink</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="icon" href="./img/healthlink_logo.png">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <h1 class="logo">HealthLink</h1>
+        
+        <!-- Hamburger Menu Button -->
+        <button id="menu-toggle" class="menu-toggle">&#9776;</button>
+    
+        <ul class="nav-links" id="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/healthlinkAI">HealthLink AI</a></li>
+            <li><a href="/ourteam">Our Team</a></li>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/contactus">Contact Us</a></li>
+            <li><a href="/logout" class="logout-btn">Logout</a></li>
+        </ul>
+    </nav>
+
+    <!-- Our Team Section -->
+    <section class="team-section">
+        <h2>Meet Our Team</h2>
+        <p>We are a passionate team dedicated to bringing innovation to healthcare.</p>
+
+        <div class="team-container">
+            <div class="team-member">
+                <img src="./img/Passport.jpg" alt="Member 1">
+                <h3>Mr Pranav Gujar</h3>
+                <p>Full Stack Developer</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chatbot Floating Button -->
+    <div class="chatbot-container">
+        <button id="chatbot-toggle">💬 Chat with AI</button>
+        <div class="chat-window" id="chat-window">
+            <div class="chat-header">       
+                <span>AI Assistant</span>
+                <button id="close-chat">✖</button>
+            </div>
+            <div class="chat-body" id="chat-body"></div>
+            <div class="chat-input">
+                <input type="text" id="user-input" placeholder="Ask me anything...">
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>
+    </footer>
+
+    <script src="/js/dashboard.js"></script>
+
+</body>
+</html>

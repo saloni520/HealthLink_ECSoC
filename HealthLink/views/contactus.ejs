@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us - HealthLink</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="icon" href="./img/healthlink_logo.png">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        
+        <h1 class="logo">HealthLink</h1>
+        
+        <!-- Hamburger Menu Button -->
+        <button id="menu-toggle" class="menu-toggle">&#9776;</button>
+    
+        <ul class="nav-links" id="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/healthlinkAI">HealthLink AI</a></li>
+            <li><a href="/ourteam">Our Team</a></li>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/contactus">Contact Us</a></li>
+            <li><a href="/logout" class="logout-btn">Logout</a></li>
+        </ul>
+    </nav>
+
+    <!-- Contact Section -->
+    <section class="contact-section">
+        <h2>Contact Us</h2>
+        <p>Have questions? Get in touch with us!</p>
+
+        <form action="/contact" method="POST">
+            <input type="text" name="name" placeholder="Your Name" required>
+            <input type="email" name="email" placeholder="Your Email" required>
+            <textarea name="message" placeholder="Your Message" required></textarea>
+            <button type="submit">Send Message</button>
+        </form>
+    </section>
+
+    <!-- Chatbot Floating Button -->
+    <div class="chatbot-container">
+        <button id="chatbot-toggle">💬 Chat with AI</button>
+        <div class="chat-window" id="chat-window">
+            <div class="chat-header">
+                <span>AI Assistant</span>
+                <button id="close-chat">✖</button>
+            </div>
+            <div class="chat-body" id="chat-body"></div>
+            <div class="chat-input">
+                <input type="text" id="user-input" placeholder="Ask me anything...">
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>
+    </footer>
+
+    <script src="/js/dashboard.js"></script>
+
+</body>
+</html>

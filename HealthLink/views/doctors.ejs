@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Doctors</title>
+    <link rel="stylesheet" href="/css/docters.css">
+    <link rel="icon" href="./img/healthlink_logo.png">
+</head>
+<body>
+
+    <nav class="navbar">
+        <h1 class="logo">HealthLink</h1>
+        <a href="/dashboard">Back to Dashboard</a>
+    </nav>
+
+    <section class="doctors-section">
+        <h2>Available Doctors</h2>
+        <div class="doctor-list">
+            <% if (doctors.length > 0) { %>
+                <% doctors.forEach(doctor => { %>
+                    <div class="doctor-card">
+                        <h3>Dr. <%= doctor.name %></h3>
+                        <p>Specialization: <%= doctor.specialization %></p>
+                        <p>Experience: <%= doctor.experience %> years</p>
+                        <a href="/doctor/<%= doctor._id %>" class="btn">View Profile & Book</a>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <p>No doctors available at the moment.</p>
+            <% } %>
+        </div>
+    </section>
+
+    <!-- Chatbot Floating Button -->
+    <div class="chatbot-container">
+        <button id="chatbot-toggle">💬 Chat with AI</button>
+        <div class="chat-window" id="chat-window">
+            <div class="chat-header">
+                <span>AI Assistant</span>
+                <button id="close-chat">✖</button>
+            </div>
+            <div class="chat-body" id="chat-body"></div>
+            <div class="chat-input">
+                <input type="text" id="user-input" placeholder="Ask me anything...">
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>
+    </footer>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

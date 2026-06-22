@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthLink - AI Healthcare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="./css/index.css">
+    <link rel="icon" href="./img/healthlink_logo.png">
+</head>
+<body>
+    
+    <!-- Logos -->
+    <img src="./img/healthlink_logo.png" alt="HealthLink Logo" class="logo logo-left">
+    <img src="./img/ApexLegion.png" alt="HealthLink Logo" class="logo logo-right">
+
+    <section class="relative z-10 max-w-3xl w-4/5 text-center">
+        <!-- Responsive h1 -->
+        <h1 class="font-extrabold mb-4 animate-pulse text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl tracking-wide">
+            HealthLink
+        </h1>
+        
+        <!-- Responsive h2 -->
+        <h2 class="font-extrabold mb-4 animate-pulse text-2xl sm:text-3xl md:text-4xl lg:text-5xl">
+            AI Care, Always There
+        </h2>
+    
+        <!-- Responsive paragraph -->
+        <p class="mb-6 opacity-90 text-lg sm:text-xl md:text-2xl lg:text-3xl tracking-widest">
+            Linking technology and healthcare to shape a healthier future.
+        </p>
+
+        <br>
+    
+        <!-- Responsive button -->
+        <a href="#" onclick="redirectToPage()" class="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg text-lg sm:text-xl md:text-2xl text-white font-semibold transition">
+            Get Started
+        </a>
+        
+        <script>
+            function redirectToPage() {
+                const userChoice = confirm("Do you already have an account? Click OK to login, or Cancel to sign up.");
+                window.location.href = userChoice ? "/login" : "/signup";
+            }
+        </script>
+        
+    </section>
+    
+
+    <canvas id="bgCanvas"></canvas>
+
+    <script src="./js/index.js"></script>
+
+    <footer>
+        <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>
+    </footer>
+
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Appointments</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="icon" href="./img/healthlink_logo.png">
+</head>
+<body>
+
+    <nav class="navbar">
+        <h1 class="logo">HealthLink</h1>
+        <a href="/dashboard">Back to Dashboard</a>
+    </nav>
+
+    <section class="appointments-section">
+        <h2>My Appointments</h2>
+
+        <% if (appointments.length > 0) { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Age</th>
+                        <th>Symptoms</th>
+                        <th>Date</th>
+                        <!-- <th>Status</th> -->
+                    </tr>
+                </thead>
+                <tbody>
+                    <% appointments.forEach(app => { %>
+                        <tr>
+                            <td><%= app.patientName %></td>
+                            <td><%= app.patientAge %></td>
+                            <td><%= app.symptoms %></td>
+                            <td><%= new Date(app.date).toLocaleDateString() %></td>
+                            <!-- <td><%= app.status %></td> -->
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        <% } else { %>
+            <p>No appointments yet.</p>
+        <% } %>
+    </section>
+
+     <!-- Chatbot Floating Button -->
+     <div class="chatbot-container">
+        <button id="chatbot-toggle">💬 Chat with AI</button>
+        <div class="chat-window" id="chat-window">
+            <div class="chat-header">
+                <span>AI Assistant</span>
+                <button id="close-chat">✖</button>
+            </div>
+            <div class="chat-body" id="chat-body"></div>
+            <div class="chat-input">
+                <input type="text" id="user-input" placeholder="Ask me anything...">
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>
+    </footer>
+
+    <script src="/js/dashboard.js"></script>
+
+</body>
+</html>
