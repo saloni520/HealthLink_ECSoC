@@ -33,19 +33,29 @@
                 <p class="auth-subtitle">Join HealthLink and start your health journey</p>
             </div>
 
-            <form action="/signup" method="POST" class="auth-form">
+            <form action="/signup" method="POST" class="auth-form" id="signupForm" novalidate>
                 <div class="form-group">
                     <label for="name">
                         <i class="fas fa-user"></i> Full Name
                     </label>
-                    <input type="text" id="name" name="name" placeholder="Enter your full name" required>
+                    <input type="text" id="name" name="name" 
+                           placeholder="Enter your full name" 
+                           required
+                           minlength="2"
+                           maxlength="100"
+                           autocomplete="name">
+                    <div class="validation-error" id="nameError"></div>
                 </div>
 
                 <div class="form-group">
                     <label for="email">
                         <i class="fas fa-envelope"></i> Email Address
                     </label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                    <input type="email" id="email" name="email" 
+                           placeholder="Enter your email" 
+                           required
+                           autocomplete="email">
+                    <div class="validation-error" id="emailError"></div>
                 </div>
 
                 <div class="form-group">
@@ -53,14 +63,26 @@
                         <i class="fas fa-lock"></i> Password
                     </label>
                     <div class="password-input-wrapper">
-                        <input type="password" id="password" name="password" placeholder="Create a strong password" required>
+                        <input type="password" id="password" name="password" 
+                               placeholder="Create a strong password" 
+                               required
+                               minlength="8"
+                               autocomplete="new-password">
                         <button type="button" class="toggle-password" aria-label="Toggle password visibility">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
+                    <div class="validation-error" id="passwordError"></div>
                     <div class="password-strength">
                         <div class="strength-bar" id="strengthBar"></div>
                         <span class="strength-text" id="strengthText">Weak</span>
+                    </div>
+                    <div class="password-requirements">
+                        <p class="requirement" id="reqLength">✓ At least 8 characters</p>
+                        <p class="requirement" id="reqLower">✓ At least one lowercase letter</p>
+                        <p class="requirement" id="reqUpper">✓ At least one uppercase letter</p>
+                        <p class="requirement" id="reqNumber">✓ At least one number</p>
+                        <p class="requirement" id="reqSpecial">✓ At least one special character</p>
                     </div>
                 </div>
 
@@ -70,13 +92,10 @@
                     </label>
                     <select name="role" id="role" required>
                         <option value="" disabled selected>Select your role</option>
-                        <option value="patient">
-                            <i class="fas fa-user"></i> Sign Up as Patient
-                        </option>
-                        <option value="doctor">
-                            <i class="fas fa-user-md"></i> Sign Up as Doctor
-                        </option>
+                        <option value="patient">Sign Up as Patient</option>
+                        <option value="doctor">Sign Up as Doctor</option>
                     </select>
+                    <div class="validation-error" id="roleError"></div>
                 </div>
 
                 <div class="form-group terms">
@@ -85,14 +104,16 @@
                         I agree to the <a href="/terms" target="_blank">Terms of Service</a> and 
                         <a href="/privacy" target="_blank">Privacy Policy</a>
                     </label>
+                    <div class="validation-error" id="termsError"></div>
                 </div>
 
                 <button type="submit" class="btn-primary">
                     <i class="fas fa-user-plus"></i> Create Account
                 </button>
 
+                <!-- Server Error Message -->
                 <% if (message) { %>
-                    <div class="error-message">
+                    <div class="error-message server-error">
                         <i class="fas fa-exclamation-circle"></i>
                         <p><strong><%= message %></strong></p>
                     </div>
@@ -114,10 +135,9 @@
     </footer>
 
     <script>
-        // Toggle password visibility
         document.addEventListener('DOMContentLoaded', function() {
+            // Toggle password visibility
             const toggleButtons = document.querySelectorAll('.toggle-password');
-            
             toggleButtons.forEach(button => {
                 button.addEventListener('click', function() {
                     const input = this.parentElement.querySelector('input');
@@ -135,41 +155,216 @@
                 });
             });
 
-            // Password strength indicator
+            // Form elements
+            const form = document.getElementById('signupForm');
+            const nameInput = document.getElementById('name');
+            const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
-            const strengthBar = document.getElementById('strengthBar');
-            const strengthText = document.getElementById('strengthText');
+            const roleSelect = document.getElementById('role');
+            const termsCheckbox = document.getElementById('terms');
 
-            if (passwordInput) {
-                passwordInput.addEventListener('input', function() {
-                    const password = this.value;
-                    const strength = checkPasswordStrength(password);
-                    
-                    strengthBar.className = 'strength-bar ' + strength.class;
-                    strengthText.textContent = strength.label;
-                    strengthText.className = 'strength-text ' + strength.class;
-                });
+            const nameError = document.getElementById('nameError');
+            const emailError = document.getElementById('emailError');
+            const passwordError = document.getElementById('passwordError');
+            const roleError = document.getElementById('roleError');
+            const termsError = document.getElementById('termsError');
+
+            // Password requirements elements
+            const reqLength = document.getElementById('reqLength');
+            const reqLower = document.getElementById('reqLower');
+            const reqUpper = document.getElementById('reqUpper');
+            const reqNumber = document.getElementById('reqNumber');
+            const reqSpecial = document.getElementById('reqSpecial');
+
+            // Real-time validation functions
+            function validateName(name) {
+                if (!name) {
+                    nameError.textContent = 'Full name is required';
+                    nameInput.classList.add('error');
+                    return false;
+                } else if (name.length < 2) {
+                    nameError.textContent = 'Name must be at least 2 characters long';
+                    nameInput.classList.add('error');
+                    return false;
+                } else if (name.length > 100) {
+                    nameError.textContent = 'Name cannot exceed 100 characters';
+                    nameInput.classList.add('error');
+                    return false;
+                } else if (!/^[a-zA-Z\s]+$/.test(name)) {
+                    nameError.textContent = 'Name can only contain letters and spaces';
+                    nameInput.classList.add('error');
+                    return false;
+                } else {
+                    nameError.textContent = '';
+                    nameInput.classList.remove('error');
+                    nameInput.classList.add('valid');
+                    return true;
+                }
+            }
+
+            function validateEmail(email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!email) {
+                    emailError.textContent = 'Email address is required';
+                    emailInput.classList.add('error');
+                    return false;
+                } else if (!emailRegex.test(email)) {
+                    emailError.textContent = 'Please enter a valid email address (e.g., user@example.com)';
+                    emailInput.classList.add('error');
+                    return false;
+                } else {
+                    emailError.textContent = '';
+                    emailInput.classList.remove('error');
+                    emailInput.classList.add('valid');
+                    return true;
+                }
+            }
+
+            function validatePassword(password) {
+                let isValid = true;
+                let errorMessages = [];
+
+                // Check length
+                if (!password) {
+                    passwordError.textContent = 'Password is required';
+                    passwordInput.classList.add('error');
+                    return false;
+                }
+
+                // Length check
+                if (password.length < 8) {
+                    errorMessages.push('Password must be at least 8 characters');
+                    isValid = false;
+                }
+                if (!/[a-z]/.test(password)) {
+                    errorMessages.push('Password must contain a lowercase letter');
+                    isValid = false;
+                }
+                if (!/[A-Z]/.test(password)) {
+                    errorMessages.push('Password must contain an uppercase letter');
+                    isValid = false;
+                }
+                if (!/[0-9]/.test(password)) {
+                    errorMessages.push('Password must contain a number');
+                    isValid = false;
+                }
+                if (!/[^a-zA-Z0-9]/.test(password)) {
+                    errorMessages.push('Password must contain a special character');
+                    isValid = false;
+                }
+
+                // Update password requirements checklist
+                updateRequirements(password);
+
+                if (!isValid) {
+                    passwordError.textContent = errorMessages.join(' • ');
+                    passwordInput.classList.add('error');
+                    return false;
+                } else {
+                    passwordError.textContent = '';
+                    passwordInput.classList.remove('error');
+                    passwordInput.classList.add('valid');
+                    return true;
+                }
+            }
+
+            function updateRequirements(password) {
+                const checks = {
+                    length: password.length >= 8,
+                    lower: /[a-z]/.test(password),
+                    upper: /[A-Z]/.test(password),
+                    number: /[0-9]/.test(password),
+                    special: /[^a-zA-Z0-9]/.test(password)
+                };
+
+                reqLength.style.color = checks.length ? '#6bcb77' : '#ff6b6b';
+                reqLower.style.color = checks.lower ? '#6bcb77' : '#ff6b6b';
+                reqUpper.style.color = checks.upper ? '#6bcb77' : '#ff6b6b';
+                reqNumber.style.color = checks.number ? '#6bcb77' : '#ff6b6b';
+                reqSpecial.style.color = checks.special ? '#6bcb77' : '#ff6b6b';
+
+                // Update strength indicator
+                const strength = checkPasswordStrength(password);
+                const strengthBar = document.getElementById('strengthBar');
+                const strengthText = document.getElementById('strengthText');
+                
+                strengthBar.className = 'strength-bar ' + strength.class;
+                strengthText.textContent = strength.label;
+                strengthText.className = 'strength-text ' + strength.class;
             }
 
             function checkPasswordStrength(password) {
                 let score = 0;
-                
                 if (password.length >= 8) score++;
-                if (password.match(/[a-z]/)) score++;
-                if (password.match(/[A-Z]/)) score++;
-                if (password.match(/[0-9]/)) score++;
-                if (password.match(/[^a-zA-Z0-9]/)) score++;
+                if (/[a-z]/.test(password)) score++;
+                if (/[A-Z]/.test(password)) score++;
+                if (/[0-9]/.test(password)) score++;
+                if (/[^a-zA-Z0-9]/.test(password)) score++;
                 
-                if (score <= 2) {
-                    return { class: 'weak', label: 'Weak' };
-                } else if (score <= 3) {
-                    return { class: 'medium', label: 'Medium' };
-                } else if (score <= 4) {
-                    return { class: 'strong', label: 'Strong' };
+                if (score <= 2) return { class: 'weak', label: 'Weak' };
+                else if (score <= 3) return { class: 'medium', label: 'Medium' };
+                else if (score <= 4) return { class: 'strong', label: 'Strong' };
+                else return { class: 'very-strong', label: 'Very Strong' };
+            }
+
+            function validateRole(role) {
+                if (!role || role === '') {
+                    roleError.textContent = 'Please select a role';
+                    roleSelect.classList.add('error');
+                    return false;
                 } else {
-                    return { class: 'very-strong', label: 'Very Strong' };
+                    roleError.textContent = '';
+                    roleSelect.classList.remove('error');
+                    roleSelect.classList.add('valid');
+                    return true;
                 }
             }
+
+            function validateTerms(checked) {
+                if (!checked) {
+                    termsError.textContent = 'You must agree to the Terms of Service and Privacy Policy';
+                    termsCheckbox.classList.add('error');
+                    return false;
+                } else {
+                    termsError.textContent = '';
+                    termsCheckbox.classList.remove('error');
+                    termsCheckbox.classList.add('valid');
+                    return true;
+                }
+            }
+
+            // Event listeners for real-time validation
+            nameInput.addEventListener('input', function() { validateName(this.value); });
+            nameInput.addEventListener('blur', function() { if (this.value) validateName(this.value); });
+
+            emailInput.addEventListener('input', function() { validateEmail(this.value); });
+            emailInput.addEventListener('blur', function() { if (this.value) validateEmail(this.value); });
+
+            passwordInput.addEventListener('input', function() { validatePassword(this.value); });
+            passwordInput.addEventListener('blur', function() { if (this.value) validatePassword(this.value); });
+
+            roleSelect.addEventListener('change', function() { validateRole(this.value); });
+
+            termsCheckbox.addEventListener('change', function() { validateTerms(this.checked); });
+
+            // Form submission validation
+            form.addEventListener('submit', function(e) {
+                const isNameValid = validateName(nameInput.value);
+                const isEmailValid = validateEmail(emailInput.value);
+                const isPasswordValid = validatePassword(passwordInput.value);
+                const isRoleValid = validateRole(roleSelect.value);
+                const isTermsValid = validateTerms(termsCheckbox.checked);
+
+                if (!isNameValid || !isEmailValid || !isPasswordValid || !isRoleValid || !isTermsValid) {
+                    e.preventDefault();
+                    // Scroll to first error
+                    const firstError = document.querySelector('.form-group .error');
+                    if (firstError) {
+                        firstError.focus();
+                        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            });
         });
     </script>
 </body>

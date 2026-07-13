@@ -327,3 +327,165 @@ header {
     transition: all 0.3s ease;
     display: flex;
     align-items:
+
+
+
+/* ===== VALIDATION STYLES ===== */
+
+/* Error states */
+.form-group input.error,
+.form-group select.error {
+    border-color: #ff6b6b;
+    background: rgba(255, 69, 58, 0.1);
+}
+
+.form-group input.valid,
+.form-group select.valid {
+    border-color: #6bcb77;
+    background: rgba(107, 203, 119, 0.1);
+}
+
+/* Validation error messages */
+.validation-error {
+    color: #ff6b6b;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.validation-error::before {
+    content: '⚠️';
+    font-size: 0.85rem;
+}
+
+/* Server error messages */
+.server-error {
+    margin-top: 15px;
+    padding: 12px 15px;
+    background: rgba(255, 69, 58, 0.15);
+    border: 1px solid rgba(255, 69, 58, 0.3);
+    border-radius: 10px;
+    color: #ff6b6b;
+}
+
+/* Password requirements checklist */
+.password-requirements {
+    margin-top: 10px;
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.password-requirements .requirement {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 3px 0;
+    transition: color 0.3s ease;
+}
+
+.password-requirements .requirement.valid {
+    color: #6bcb77;
+}
+
+/* Toggle password button */
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.3s ease;
+}
+
+.toggle-password:hover {
+    color: #00d2ff;
+}
+
+/* Password strength indicator */
+.password-strength {
+    margin-top: 8px;
+}
+
+.strength-bar {
+    height: 4px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+
+.strength-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease, background 0.3s ease;
+}
+
+.strength-bar.weak::after {
+    width: 25%;
+    background: #ff6b6b;
+}
+
+.strength-bar.medium::after {
+    width: 50%;
+    background: #ffd93d;
+}
+
+.strength-bar.strong::after {
+    width: 75%;
+    background: #6bcb77;
+}
+
+.strength-bar.very-strong::after {
+    width: 100%;
+    background: #4d96ff;
+}
+
+.strength-text {
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+.strength-text.weak {
+    color: #ff6b6b;
+}
+
+.strength-text.medium {
+    color: #ffd93d;
+}
+
+.strength-text.strong {
+    color: #6bcb77;
+}
+
+.strength-text.very-strong {
+    color: #4d96ff;
+}
+
+/* Terms checkbox error */
+.terms input.error + label {
+    color: #ff6b6b;
+}
+
+/* ===== RESPONSIVE VALIDATION ===== */
+@media screen and (max-width: 480px) {
+    .validation-error {
+        font-size: 0.75rem;
+    }
+    
+    .password-requirements .requirement {
+        font-size: 0.75rem;
+    }
+}
