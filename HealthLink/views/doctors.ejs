@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Available Doctors</title>
     <link rel="stylesheet" href="/css/docters.css">
+    <link rel="stylesheet" href="/css/theme.css">
     <link rel="icon" href="./img/healthlink_logo.png">
+    <script>document.documentElement.dataset.theme = localStorage.getItem("healthlink-theme") || "dark";</script>
 </head>
 <body>
 
     <nav class="navbar">
         <h1 class="logo">HealthLink</h1>
+        <button class="theme-toggle" type="button">Theme</button>
         <a href="/dashboard">Back to Dashboard</a>
     </nav>
 
@@ -53,5 +56,6 @@
     </footer>
 
     <script src="/js/dashboard.js"></script>
+    <script src="/js/theme.js"></script>
 </body>
 </html>

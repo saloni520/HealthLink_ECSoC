@@ -7,9 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="./css/index.css">
+    <link rel="stylesheet" href="./css/theme.css">
     <link rel="icon" href="./img/healthlink_logo.png">
+    <script>document.documentElement.dataset.theme = localStorage.getItem("healthlink-theme") || "dark";</script>
 </head>
 <body>
+    <button class="theme-toggle" type="button">Theme</button>
     
     <!-- Logos -->
     <img src="./img/healthlink_logo.png" alt="HealthLink Logo" class="logo logo-left">
@@ -34,7 +37,7 @@
         <br>
     
         <!-- Responsive button -->
-        <a href="#" onclick="redirectToPage()" class="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg text-lg sm:text-xl md:text-2xl text-white font-semibold transition">
+        <a href="#" onclick="redirectToPage()" class="get-started px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg text-lg sm:text-xl md:text-2xl text-white font-semibold transition">
             Get Started
         </a>
         
@@ -51,6 +54,7 @@
     <canvas id="bgCanvas"></canvas>
 
     <script src="./js/index.js"></script>
+    <script src="./js/theme.js"></script>
 
     <footer>
         <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>

@@ -1,0 +1,247 @@
+:root {
+    color-scheme: dark;
+    --bg-primary: #0a192f;
+    --bg-secondary: #1e293b;
+    --surface: #112240;
+    --surface-elevated: #163052;
+    --text-primary: #ffffff;
+    --text-secondary: #ccd6f6;
+    --border-color: #64ffda;
+    --accent: #64ffda;
+    --accent-hover: #52e0c4;
+    --accent-contrast: #112240;
+    --input-bg: #0a192f;
+    --shadow: rgba(0, 0, 0, 0.5);
+    --muted-surface: rgba(255, 255, 255, 0.1);
+    --danger: #ff6666;
+}
+
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg-primary: #f4f8fb;
+    --bg-secondary: #e5eef5;
+    --surface: #ffffff;
+    --surface-elevated: #f8fbfd;
+    --text-primary: #102a43;
+    --text-secondary: #334e68;
+    --border-color: #007f73;
+    --accent: #007f73;
+    --accent-hover: #00665c;
+    --accent-contrast: #ffffff;
+    --input-bg: #ffffff;
+    --shadow: rgba(16, 42, 67, 0.18);
+    --muted-surface: rgba(16, 42, 67, 0.08);
+    --danger: #b42318;
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+html,
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body {
+    background-image: radial-gradient(circle, var(--bg-primary) 30%, var(--bg-secondary) 100%);
+}
+
+body * {
+    border-color: var(--border-color);
+}
+
+.theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    z-index: 1100;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 8px 12px;
+    background: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.9rem;
+    width: auto;
+    margin: 0;
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+    background: var(--surface-elevated);
+}
+
+.theme-toggle:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.navbar .theme-toggle {
+    position: static;
+    margin-left: 12px;
+}
+
+body,
+.navbar,
+footer,
+.dashboard-content,
+.appointments-section,
+.doctor-profile,
+.contact-section,
+.team-member,
+.doctor-card,
+.chat-window,
+.chat-input,
+.popup-content,
+.container {
+    background-color: var(--surface);
+    color: var(--text-primary);
+}
+
+.navbar,
+footer {
+    box-shadow: 0 4px 10px var(--shadow);
+}
+
+p,
+li,
+label,
+td,
+.dashboard p,
+.doctor-card p,
+.doctor-profile p,
+.contact-section p,
+.team-section p,
+.team-member p,
+footer {
+    color: var(--text-secondary);
+}
+
+a,
+.navbar a {
+    color: var(--text-secondary);
+}
+
+a:hover,
+.navbar a:hover,
+h1,
+h2,
+h3,
+.logo,
+.dashboard h2,
+.dashboard-content h3,
+.doctors-section h2,
+.doctor-card h3,
+.doctor-profile h2,
+.contact-section h2,
+.team-section h2,
+.team-member h3 {
+    color: var(--accent);
+}
+
+input,
+textarea,
+select,
+.chat-input input,
+.contact-section input,
+.contact-section textarea {
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+button,
+.btn,
+.dashboard-content a,
+form button,
+.contact-section button,
+#chatbot-toggle,
+.chat-input button,
+#ai-analysis-btn,
+#analyze-btn {
+    background-color: var(--accent);
+    color: var(--accent-contrast);
+}
+
+button:hover,
+.btn:hover,
+.dashboard-content a:hover,
+form button:hover,
+.contact-section button:hover,
+#chatbot-toggle:hover,
+.chat-input button:hover,
+#ai-analysis-btn:hover,
+#analyze-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.chat-header,
+th {
+    background-color: var(--accent);
+    color: var(--accent-contrast);
+}
+
+.overlay {
+    color: var(--text-primary);
+}
+
+.subtitle {
+    color: var(--text-secondary);
+}
+
+.popup {
+    background: var(--surface);
+    color: var(--text-primary);
+    box-shadow: 0 0 10px var(--shadow);
+}
+
+.get-started {
+    background: var(--accent);
+    color: var(--accent-contrast);
+}
+
+.get-started:hover {
+    background: var(--accent-hover);
+}
+
+.chat-body {
+    background-color: var(--bg-primary);
+}
+
+.you {
+    background-color: var(--accent);
+    color: var(--accent-contrast);
+}
+
+.ai {
+    background-color: var(--muted-surface);
+    color: var(--text-primary);
+}
+
+td {
+    background-color: var(--muted-surface);
+}
+
+.error-message {
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .theme-toggle {
+        top: 10px;
+        right: 10px;
+    }
+
+    .navbar .theme-toggle {
+        margin: 8px auto 0;
+    }
+}
