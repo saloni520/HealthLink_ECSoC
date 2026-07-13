@@ -7,42 +7,109 @@
     <link rel="stylesheet" href="/css/Login.css">
     <link rel="stylesheet" href="/css/index.css">
     <link rel="icon" href="./img/healthlink_logo.png">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
     <!-- Header -->
     <header>
-        <a href="/">
-            <img src="/img/healthlink_logo.png" alt="HealthLink Logo" class="logo logo-left">
-        </a>        
-        <h1 class="project-name">HealthLink</h1>
-        <img src="/img/ApexLegion.png" alt="HealthLink Logo" class="logo logo-right">
+        <div class="header-content">
+            <a href="/" class="logo-link">
+                <img src="/img/healthlink_logo.png" alt="HealthLink Logo" class="logo logo-left">
+            </a>        
+            <h1 class="project-name">HealthLink</h1>
+            <img src="/img/ApexLegion.png" alt="HealthLink Logo" class="logo logo-right">
+        </div>
     </header>
 
     <!-- Login Form -->
-    <div class="container">
-        <h2>Login</h2>
+    <main class="container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i class="fas fa-user-circle auth-icon"></i>
+                <h2>Welcome Back</h2>
+                <p class="auth-subtitle">Login to your HealthLink account</p>
+            </div>
 
-        <form action="/login" method="POST">
-            <input type="email" name="email" placeholder="Email" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-
-            <!-- Error Message Below the Button -->
-            <% if (typeof message !== "undefined" && message) { %>
-                <div class="error-message">
-                    <p><%= message %></p>
+            <form action="/login" method="POST" class="auth-form">
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i> Email Address
+                    </label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
                 </div>
-            <% } %>
-        </form>
 
-        <p>Don't have an account? <a href="/signup" style="color: aqua;">Sign up here</a></p>
-    </div>
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Password
+                    </label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                        <button type="button" class="toggle-password" aria-label="Toggle password visibility">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-options">
+                    <div class="remember-me">
+                        <input type="checkbox" id="remember" name="remember">
+                        <label for="remember">Remember me</label>
+                    </div>
+                    <a href="/forgot-password" class="forgot-password">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+
+                <!-- Error Message Below the Button -->
+                <% if (typeof message !== "undefined" && message) { %>
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p><%= message %></p>
+                    </div>
+                <% } %>
+            </form>
+
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="/signup">Sign up here</a></p>
+            </div>
+        </div>
+    </main>
 
     <!-- Footer -->
     <footer>
-        <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>
+        <div class="footer-content">
+            <p>&copy; 2025 HealthLink. All rights reserved.</p>
+            <p class="footer-developer">Developed by Team ApexLegion</p>
+        </div>
     </footer>
 
+    <script>
+        // Toggle password visibility
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleButtons = document.querySelectorAll('.toggle-password');
+            
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const input = this.parentElement.querySelector('input');
+                    const icon = this.querySelector('i');
+                    
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        input.type = 'password';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
