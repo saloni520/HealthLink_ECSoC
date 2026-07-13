@@ -6,9 +6,12 @@
     <title>Sign Up | HealthLink</title>
     <link rel="stylesheet" href="/css/SignUp.css">
     <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/theme.css">
     <link rel="icon" href="./img/healthlink_logo.png">
+    <script>document.documentElement.dataset.theme = localStorage.getItem("healthlink-theme") || "dark";</script>
 </head>
 <body>
+    <button class="theme-toggle" type="button">Theme</button>
 
     <!-- Header -->
     <header>
@@ -40,7 +43,7 @@
             <% } %>
             
         </form>
-        <p>Already have an account? <a href="/login" style="color: aqua;">Login here</a></p>
+        <p>Already have an account? <a href="/login">Login here</a></p>
     </div>
 
     <!-- Footer -->
@@ -48,5 +51,6 @@
         <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>
     </footer>
 
+    <script src="/js/theme.js"></script>
 </body>
 </html>

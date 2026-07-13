@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Our Team - HealthLink</title>
     <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/theme.css">
     <link rel="icon" href="./img/healthlink_logo.png">
+    <script>document.documentElement.dataset.theme = localStorage.getItem("healthlink-theme") || "dark";</script>
 </head>
 <body>
 
     <!-- Navbar -->
     <nav class="navbar">
         <h1 class="logo">HealthLink</h1>
+        <button class="theme-toggle" type="button">Theme</button>
         
         <!-- Hamburger Menu Button -->
         <button id="menu-toggle" class="menu-toggle">&#9776;</button>
@@ -61,6 +64,7 @@
     </footer>
 
     <script src="/js/dashboard.js"></script>
+    <script src="/js/theme.js"></script>
 
 </body>
 </html>
