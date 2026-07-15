@@ -20,72 +20,89 @@ const User = require("../models/User");
 
 const router = express.Router();
 
+// Simple logger for auth routes
+const logger = {
+    info: (msg, meta = {}) => console.log(`[${new Date().toISOString()}] ℹ️ ${msg}`, meta),
+    error: (msg, meta = {}) => console.error(`[${new Date().toISOString()}] ❌ ${msg}`, meta),
+    warn: (msg, meta = {}) => console.warn(`[${new Date().toISOString()}] ⚠️ ${msg}`, meta)
+};
+
 /**
  * ============================================
  * USER REGISTRATION ENDPOINT
  * ============================================
- * Creates a new user account with role-based access
- * 
- * @route POST /signup
- * @access Public
- * @param {string} name - User's full name
- * @param {string} email - User's email address (must be unique)
- * @param {string} password - User's password (will be hashed)
- * @param {string} role - User's role: "patient" or "doctor"
- * 
- * @returns {Object} Redirects to login page on success
- * @throws {500} Database or server error
  */
 router.post("/signup", async (req, res) => {
-    // Extract user data from request body
     const { name, email, password, role } = req.body;
 
+    // Input validation
+    if (!name || !email || !password || !role) {
+        logger.warn('Signup: Missing required fields', { email });
+        return res.status(400).json({
+            success: false,
+            status: 400,
+            message: "All fields are required.",
+            timestamp: new Date().toISOString()
+        });
+    }
+
     try {
-        /**
-         * Step 1: Check for existing user
-         * Prevents duplicate account creation
-         */
+        // Check for existing user
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return res.send("User already exists. Please login.");
+            logger.warn('Signup: User already exists', { email });
+            return res.status(409).json({
+                success: false,
+                status: 409,
+                message: "User already exists. Please login.",
+                timestamp: new Date().toISOString()
+            });
         }
 
-        /**
-         * Step 2: Hash password
-         * bcrypt hash with 10 salt rounds for security
-         * This ensures passwords are never stored in plaintext
-         */
+        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-        
-        /**
-         * Step 3: Create new user document
-         * Store hashed password instead of plaintext
-         */
-        const newUser = new User({ 
-            name, 
-            email, 
-            password: hashedPassword, 
-            role 
+
+        // Create user
+        const newUser = new User({
+            name,
+            email,
+            password: hashedPassword,
+            role
         });
-        
-        /**
-         * Step 4: Save to database
-         * Persist the new user document in MongoDB
-         */
+
         await newUser.save();
 
-        /**
-         * Step 5: Redirect to login
-         * User must login with their new credentials
-         */
-        res.redirect("/login");
+        logger.info('Signup: User registered successfully', {
+            userId: newUser._id,
+            email,
+            role
+        });
+
+        res.status(201).json({
+            success: true,
+            status: 201,
+            message: "User registered successfully. Please login.",
+            data: {
+                id: newUser._id,
+                name: newUser.name,
+                email: newUser.email,
+                role: newUser.role
+            },
+            timestamp: new Date().toISOString()
+        });
+
     } catch (error) {
-        /**
-         * Error Handling: Catch any database or server errors
-         * Return 500 status with user-friendly message
-         */
-        console.error("❌ Signup Error:", error);
-        res.status(500).send("Error signing up. Try again.");
+        logger.error('Signup error', {
+            error: error.message,
+            stack: error.stack,
+            email
+        });
+        res.status(500).json({
+            success: false,
+            status: 500,
+            message: "Error signing up. Please try again.",
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
@@ -93,72 +110,91 @@ router.post("/signup", async (req, res) => {
  * ============================================
  * USER LOGIN ENDPOINT
  * ============================================
- * Authenticates users and issues JWT tokens
- * 
- * @route POST /login
- * @access Public
- * @param {string} email - User's registered email
- * @param {string} password - User's password
- * 
- * @returns {Object} Success message with user role
- * @throws {500} Database or server error
  */
 router.post("/login", async (req, res) => {
-    // Extract credentials from request body
     const { email, password } = req.body;
 
+    // Input validation
+    if (!email || !password) {
+        logger.warn('Login: Missing credentials', { email });
+        return res.status(400).json({
+            success: false,
+            status: 400,
+            message: "Email and password are required.",
+            timestamp: new Date().toISOString()
+        });
+    }
+
     try {
-        /**
-         * Step 1: Find user by email
-         * Users are identified by their unique email address
-         */
-        const user = await User.findOne({ email });
+        // Find user
+        const user = await User.findOne({ email }).select('+password');
         if (!user) {
-            return res.send("No account found. Please sign up first.");
+            logger.warn('Login: User not found', { email });
+            return res.status(404).json({
+                success: false,
+                status: 404,
+                message: "No account found. Please sign up first.",
+                timestamp: new Date().toISOString()
+            });
         }
 
-        /**
-         * Step 2: Verify password
-         * Compare plaintext password with stored hash
-         * bcrypt.compare handles salt verification automatically
-         */
+        // Verify password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.send("Incorrect password. Try again.");
+            logger.warn('Login: Invalid password', { email, userId: user._id });
+            return res.status(401).json({
+                success: false,
+                status: 401,
+                message: "Incorrect password. Try again.",
+                timestamp: new Date().toISOString()
+            });
         }
 
-        /**
-         * Step 3: Generate JWT Token
-         * Token contains user ID and role for authorization
-         * Expires in 1 hour for security
-         * 
-         * TODO: Move JWT_SECRET to environment variable
-         * Currently using hardcoded secret for demonstration
-         */
+        // Generate JWT Token
         const token = jwt.sign(
-            { 
-                id: user._id,      // User identifier
-                role: user.role    // User role for RBAC
-            }, 
-            "your_secret_key",     // JWT signing key (TODO: Move to .env)
-            { expiresIn: "1h" }    // Token expiration time
+            {
+                id: user._id,
+                role: user.role
+            },
+            process.env.JWT_SECRET || "your_secret_key",
+            { expiresIn: "1h" }
         );
 
-        /**
-         * Step 4: Send success response
-         * In production, this token should be set as HTTP-only cookie
-         * Currently returning plain text for simplicity
-         */
-        res.send(`Login successful! Welcome, ${user.role}`);
+        logger.info('Login: User logged in successfully', {
+            userId: user._id,
+            email,
+            role: user.role
+        });
+
+        res.status(200).json({
+            success: true,
+            status: 200,
+            message: `Login successful! Welcome, ${user.role}`,
+            data: {
+                token,
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role
+                }
+            },
+            timestamp: new Date().toISOString()
+        });
+
     } catch (error) {
-        /**
-         * Error Handling: Catch authentication errors
-         * Return 500 status with generic error message
-         */
-        console.error("❌ Login Error:", error);
-        res.status(500).send("Error logging in. Try again.");
+        logger.error('Login error', {
+            error: error.message,
+            stack: error.stack,
+            email
+        });
+        res.status(500).json({
+            success: false,
+            status: 500,
+            message: "Error logging in. Try again.",
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
-// Export the router for use in server.js
 module.exports = router;
