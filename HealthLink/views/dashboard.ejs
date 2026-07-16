@@ -6,70 +6,120 @@
     <title>HealthLink Dashboard</title>
     <link rel="stylesheet" href="/css/dashboard.css">
     <link rel="icon" href="./img/healthlink_logo.png">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
-    <!-- Navbar -->
-    <nav class="navbar">
-        
+    <!-- ============================================
+    NAVBAR
+    ============================================ -->
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
         <h1 class="logo">HealthLink</h1>
         
         <!-- Hamburger Menu Button -->
-        <button id="menu-toggle" class="menu-toggle">&#9776;</button>
+        <button id="menu-toggle" class="menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+            <i class="fas fa-bars"></i>
+        </button>
     
-        <ul class="nav-links" id="nav-links">
-            <li><a href="/">Home</a></li>
-            <li><a href="/healthlinkAI">HealthLink AI</a></li>
-            <li><a href="/ourteam">Our Team</a></li>
-            <li><a href="/dashboard">Dashboard</a></li>
-            <li><a href="/contactus">Contact Us</a></li>
-            <li><a href="/logout" class="logout-btn">Logout</a></li>
+        <ul class="nav-links" id="nav-links" role="menubar">
+            <li role="none"><a href="/" role="menuitem"><i class="fas fa-home"></i> Home</a></li>
+            <li role="none"><a href="/healthlinkAI" role="menuitem"><i class="fas fa-robot"></i> HealthLink AI</a></li>
+            <li role="none"><a href="/ourteam" role="menuitem"><i class="fas fa-users"></i> Our Team</a></li>
+            <li role="none"><a href="/dashboard" role="menuitem"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            <li role="none"><a href="/contactus" role="menuitem"><i class="fas fa-envelope"></i> Contact Us</a></li>
+            <li role="none"><a href="/logout" class="logout-btn" role="menuitem"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
 
-    <!-- Dashboard Section -->
-    <section class="dashboard">
-        <h2>Welcome, <%= user.name %>!</h2>
-        <p>Role: <strong><%= user.role %></strong></p>
+    <!-- ============================================
+    DASHBOARD SECTION
+    ============================================ -->
+    <main class="dashboard" role="main">
+        
+        <!-- Dashboard Header -->
+        <div class="dashboard-header">
+            <h2>Welcome, <%= user.name %>! <i class="fas fa-wave" style="color: #64ffda;"></i></h2>
+            <p class="welcome-subtitle">We're glad to have you here</p>
+            <span class="role-badge">
+                <i class="fas fa-<%= user.role === 'patient' ? 'user' : 'user-md' %>"></i> 
+                <%= user.role.charAt(0).toUpperCase() + user.role.slice(1) %>
+            </span>
+        </div>
     
-        <% if (user.role === "patient") { %>
-            <div class="dashboard-content">
-                <h3>Your Recent Activities</h3>
-                <ul id="activities">
-                    <li>No recent activities</li>
-                </ul>
-                <a href="/doctors" class="btn">Schedule an Appointment</a>
-            </div>
-        <% } else if (user.role === "doctor") { %>
-            <div class="dashboard-content">
-                <h3>Doctor's Panel</h3>
-                <p>Manage your appointments and patient reports.</p>
-                <a href="/view-appointments" class="btn">View Appointments</a>
-            </div>
-        <% } %>
-    </section>
-    
-    <!-- Chatbot Floating Button -->
-    <div class="chatbot-container">
-        <button id="chatbot-toggle">💬 Chat with AI</button>
-        <div class="chat-window" id="chat-window">
+        <!-- Dashboard Content -->
+        <div class="dashboard-content">
+            <% if (user.role === "patient") { %>
+                <!-- Patient Dashboard -->
+                <div class="patient-dashboard">
+                    <h3><i class="fas fa-calendar-check"></i> Your Recent Activities</h3>
+                    <ul id="activities">
+                        <li><i class="fas fa-clock"></i> No recent activities</li>
+                    </ul>
+                    <a href="/doctors" class="btn">
+                        <i class="fas fa-user-md"></i> Schedule an Appointment
+                    </a>
+                </div>
+            <% } else if (user.role === "doctor") { %>
+                <!-- Doctor Dashboard -->
+                <div class="doctor-dashboard">
+                    <h3><i class="fas fa-stethoscope"></i> Doctor's Panel</h3>
+                    <p>Manage your appointments and patient reports efficiently.</p>
+                    <div class="dashboard-actions">
+                        <a href="/view-appointments" class="btn">
+                            <i class="fas fa-list"></i> View Appointments
+                        </a>
+                        <a href="#" class="btn btn-secondary">
+                            <i class="fas fa-chart-line"></i> View Statistics
+                        </a>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </main>
+
+    <!-- ============================================
+    CHATBOT FLOATING BUTTON
+    ============================================ -->
+    <div class="chatbot-container" role="complementary" aria-label="AI Chat Assistant">
+        <button id="chatbot-toggle" aria-label="Open chat assistant">
+            <span class="chat-icon">💬</span> Chat with AI
+        </button>
+        <div class="chat-window" id="chat-window" role="dialog" aria-label="Chat window">
             <div class="chat-header">
-                <span>AI Assistant</span>
-                <button id="close-chat">✖</button>
+                <span>
+                    <i class="fas fa-robot"></i> AI Assistant
+                    <span class="chat-status">● Online</span>
+                </span>
+                <button id="close-chat" aria-label="Close chat">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="chat-body" id="chat-body"></div>
+            <div class="chat-body" id="chat-body">
+                <div class="message ai">
+                    <strong>AI:</strong> Hello! I'm your HealthLink AI assistant. How can I help you today? 😊
+                </div>
+            </div>
             <div class="chat-input">
-                <input type="text" id="user-input" placeholder="Ask me anything...">
-                <button id="send-btn">Send</button>
+                <input type="text" id="user-input" placeholder="Ask me anything about health..." aria-label="Chat input">
+                <button id="send-btn" aria-label="Send message">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </div>
         </div>
     </div>
 
-    <footer>
-        <p>&copy; 2025 HealthLink. All rights reserved. Developed by Team ApexLegion.</p>
+    <!-- ============================================
+    FOOTER
+    ============================================ -->
+    <footer role="contentinfo">
+        <p>&copy; 2025 HealthLink. All rights reserved. <span class="text-muted">Developed by Team ApexLegion</span></p>
     </footer>
 
+    <!-- ============================================
+    SCRIPTS
+    ============================================ -->
     <script src="/js/dashboard.js"></script>
-
 </body>
 </html>
