@@ -10,15 +10,27 @@
  * @requires express
  * @requires jsonwebtoken
  * @requires ../models/User
+ * @requires ../utils/validation
+ * @requires ../utils/errorHandler
  */
 
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+// Import validation utilities
+const { validateBody, schemas } = require("../utils/validation");
+
+// Import error handling utilities
+const {
+    asyncHandler,
+    AuthenticationError,
+    AuthorizationError,
+    ValidationError
+} = require("../utils/errorHandler");
+
 const router = express.Router();
 
-// Simple logger
 const logger = {
     info: (msg, meta = {}) => console.log(`[${new Date().toISOString()}] ℹ️ ${msg}`, meta),
     error: (msg, meta = {}) => console.error(`[${new Date().toISOString()}] ❌ ${msg}`, meta),
@@ -42,7 +54,7 @@ const requireAuth = async (req, res, next) => {
             path: req.path,
             ip: req.ip
         });
-        return res.redirect("/login");
+        return next(new AuthenticationError('Authentication required'));
     }
 
     try {
@@ -54,7 +66,7 @@ const requireAuth = async (req, res, next) => {
                 userId: decoded.id,
                 path: req.path
             });
-            return res.redirect("/login");
+            return next(new AuthenticationError('User not found'));
         }
 
         logger.debug('Auth: User authenticated', {
@@ -69,7 +81,7 @@ const requireAuth = async (req, res, next) => {
             error: error.message,
             path: req.path
         });
-        res.redirect("/login");
+        next(new AuthenticationError('Invalid or expired token'));
     }
 };
 
@@ -78,13 +90,13 @@ const requireAuth = async (req, res, next) => {
  * PATIENT DASHBOARD
  * ============================================
  */
-router.get("/patient-dashboard", requireAuth, (req, res) => {
+router.get("/patient-dashboard", requireAuth, asyncHandler(async (req, res) => {
     if (req.user.role !== "patient") {
         logger.warn('Patient dashboard: Unauthorized access attempt', {
             userId: req.user._id,
             role: req.user.role
         });
-        return res.redirect("/login");
+        throw new AuthorizationError('Access denied. Patient only.');
     }
 
     logger.info('Patient dashboard accessed', {
@@ -96,20 +108,20 @@ router.get("/patient-dashboard", requireAuth, (req, res) => {
         user: req.user,
         message: null
     });
-});
+}));
 
 /**
  * ============================================
  * DOCTOR DASHBOARD
  * ============================================
  */
-router.get("/doctor-dashboard", requireAuth, (req, res) => {
+router.get("/doctor-dashboard", requireAuth, asyncHandler(async (req, res) => {
     if (req.user.role !== "doctor") {
         logger.warn('Doctor dashboard: Unauthorized access attempt', {
             userId: req.user._id,
             role: req.user.role
         });
-        return res.redirect("/login");
+        throw new AuthorizationError('Access denied. Doctor only.');
     }
 
     logger.info('Doctor dashboard accessed', {
@@ -121,6 +133,6 @@ router.get("/doctor-dashboard", requireAuth, (req, res) => {
         user: req.user,
         message: null
     });
-});
+}));
 
 module.exports = router;

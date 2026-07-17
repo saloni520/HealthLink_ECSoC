@@ -34,47 +34,38 @@ const crypto = require("crypto");
 const User = require("./models/User");
 const Appointment = require("./models/Appointment");
 
+// Import validation utilities
+const { validateBody, schemas } = require("./utils/validation");
+
+// Import error handling utilities
+const {
+    errorHandler,
+    notFoundHandler,
+    asyncHandler,
+    ValidationError,
+    AuthenticationError,
+    AuthorizationError,
+    NotFoundError,
+    ConflictError,
+    DatabaseError,
+    ExternalServiceError,
+    errorLogger
+} = require("./utils/errorHandler");
+
 // ============================================
 // LOGGING SYSTEM
 // ============================================
 
-/**
- * Custom Logger with different log levels
- * Provides structured logging with timestamps and request IDs
- */
 const logger = {
-    /**
-     * Log an info message
-     * @param {string} message - Log message
-     * @param {Object} meta - Additional metadata
-     */
     info: (message, meta = {}) => {
         console.log(`[${new Date().toISOString()}] ℹ️ INFO: ${message}`, meta);
     },
-    
-    /**
-     * Log a warning message
-     * @param {string} message - Log message
-     * @param {Object} meta - Additional metadata
-     */
     warn: (message, meta = {}) => {
         console.warn(`[${new Date().toISOString()}] ⚠️ WARN: ${message}`, meta);
     },
-    
-    /**
-     * Log an error message
-     * @param {string} message - Log message
-     * @param {Object} meta - Additional metadata
-     */
     error: (message, meta = {}) => {
         console.error(`[${new Date().toISOString()}] ❌ ERROR: ${message}`, meta);
     },
-    
-    /**
-     * Log a debug message (only in development)
-     * @param {string} message - Log message
-     * @param {Object} meta - Additional metadata
-     */
     debug: (message, meta = {}) => {
         if (process.env.NODE_ENV === 'development') {
             console.debug(`[${new Date().toISOString()}] 🔍 DEBUG: ${message}`, meta);
@@ -92,10 +83,6 @@ const app = express();
 // REQUEST ID MIDDLEWARE
 // ============================================
 
-/**
- * Generate unique request ID for tracking
- * Attaches to each request for logging correlation
- */
 app.use((req, res, next) => {
     req.requestId = crypto.randomBytes(8).toString('hex');
     res.setHeader('X-Request-Id', req.requestId);
@@ -127,10 +114,6 @@ app.use(express.static(path.join(__dirname, "public")));
 // DATABASE CONNECTION
 // ============================================
 
-/**
- * Establishes connection to MongoDB Atlas
- * Includes retry logic for connection failures
- */
 const connectDB = async (retryCount = 0) => {
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 5000;
@@ -161,7 +144,6 @@ const connectDB = async (retryCount = 0) => {
     }
 };
 
-// Handle MongoDB connection events
 mongoose.connection.on('connected', () => {
     logger.info('MongoDB connection established');
 });
@@ -174,7 +156,6 @@ mongoose.connection.on('disconnected', () => {
     logger.warn('MongoDB connection disconnected');
 });
 
-// Gracefully close MongoDB on app termination
 process.on('SIGINT', async () => {
     await mongoose.connection.close();
     logger.info('MongoDB connection closed due to app termination');
@@ -190,9 +171,6 @@ connectDB();
 const userCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
 
-/**
- * Authentication Middleware - Verifies JWT and loads user
- */
 const requireAuth = async (req, res, next) => {
     const token = req.cookies.token;
     if (!token) {
@@ -200,13 +178,15 @@ const requireAuth = async (req, res, next) => {
             requestId: req.requestId,
             path: req.path
         });
+        if (req.path.startsWith('/api/')) {
+            return next(new AuthenticationError('Authentication token required'));
+        }
         return res.redirect("/login");
     }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // Check cache first
         const cachedUser = userCache.get(decoded.id);
         if (cachedUser && (Date.now() - cachedUser.timestamp) < CACHE_TTL) {
             req.user = cachedUser.data;
@@ -214,7 +194,6 @@ const requireAuth = async (req, res, next) => {
             return next();
         }
 
-        // Cache miss - query database
         const user = await User.findById(decoded.id)
             .select('name email role specialization experience bio appointments')
             .lean();
@@ -225,10 +204,9 @@ const requireAuth = async (req, res, next) => {
                 requestId: req.requestId
             });
             res.clearCookie("token");
-            return res.redirect("/login");
+            return next(new AuthenticationError('User not found'));
         }
 
-        // Store in cache
         userCache.set(decoded.id, {
             data: user,
             timestamp: Date.now()
@@ -243,7 +221,11 @@ const requireAuth = async (req, res, next) => {
             requestId: req.requestId
         });
         res.clearCookie("token");
-        res.redirect("/login");
+        
+        if (error.name === 'TokenExpiredError') {
+            return next(new AuthenticationError('Token expired. Please login again.'));
+        }
+        return next(new AuthenticationError('Invalid token. Please login again.'));
     }
 };
 
@@ -262,9 +244,6 @@ setInterval(() => {
     }
 }, CACHE_TTL);
 
-/**
- * Check Logged In Middleware
- */
 const checkLoggedIn = (req, res, next) => {
     const token = req.cookies.token;
     if (token) {
@@ -280,51 +259,9 @@ const checkLoggedIn = (req, res, next) => {
 };
 
 // ============================================
-// STANDARDIZED ERROR RESPONSE
-// ============================================
-
-/**
- * Standardized error response handler
- */
-const sendErrorResponse = (res, status, message, code = null, details = null) => {
-    const response = {
-        success: false,
-        status,
-        message,
-        timestamp: new Date().toISOString()
-    };
-
-    if (code) response.code = code;
-    if (details && process.env.NODE_ENV === 'development') {
-        response.details = details;
-    }
-
-    return res.status(status).json(response);
-};
-
-/**
- * Standardized success response handler
- */
-const sendSuccessResponse = (res, status, data = null, message = null) => {
-    const response = {
-        success: true,
-        status,
-        timestamp: new Date().toISOString()
-    };
-
-    if (message) response.message = message;
-    if (data) response.data = data;
-
-    return res.status(status).json(response);
-};
-
-// ============================================
 // PUBLIC ROUTES
 // ============================================
 
-/**
- * Landing Page
- */
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "views", "index.html"));
 });
@@ -333,46 +270,28 @@ app.get("/", (req, res) => {
 // AUTHENTICATION ROUTES
 // ============================================
 
-/**
- * Signup Page
- */
 app.get("/signup", checkLoggedIn, (req, res) => {
     res.render("signup", { message: null });
 });
 
-/**
- * User Registration Handler
- */
-app.post("/signup", async (req, res) => {
-    const { name, email, password, role } = req.body;
-    
-    logger.info('Signup attempt', {
-        email,
-        role,
-        requestId: req.requestId
-    });
-
-    // Validate required fields
-    if (!name || !email || !password || !role) {
-        logger.warn('Signup failed: Missing required fields', {
+app.post("/signup", 
+    validateBody(schemas.signup),
+    asyncHandler(async (req, res) => {
+        const { name, email, password, role } = req.body;
+        
+        logger.info('Signup attempt', {
             email,
+            role,
             requestId: req.requestId
         });
-        return res.render("signup", {
-            message: "All fields are required."
-        });
-    }
 
-    try {
         const existingUser = await User.findOne({ email }).lean();
         if (existingUser) {
             logger.warn('Signup failed: User already exists', {
                 email,
                 requestId: req.requestId
             });
-            return res.render("signup", {
-                message: "User already exists. Please login."
-            });
+            throw new ConflictError('User already exists. Please login.');
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -393,48 +312,23 @@ app.post("/signup", async (req, res) => {
         });
 
         res.redirect("/login");
-    } catch (error) {
-        logger.error('Signup error', {
-            error: error.message,
-            stack: error.stack,
-            email,
-            requestId: req.requestId
-        });
-        res.status(500).render("signup", {
-            message: "Error signing up. Please try again."
-        });
-    }
-});
+    })
+);
 
-/**
- * Login Page
- */
 app.get("/login", checkLoggedIn, (req, res) => {
     res.render("login", { message: null });
 });
 
-/**
- * User Login Handler
- */
-app.post("/login", async (req, res) => {
-    const { email, password } = req.body;
+app.post("/login",
+    validateBody(schemas.login),
+    asyncHandler(async (req, res) => {
+        const { email, password } = req.body;
 
-    logger.info('Login attempt', {
-        email,
-        requestId: req.requestId
-    });
-
-    if (!email || !password) {
-        logger.warn('Login failed: Missing credentials', {
+        logger.info('Login attempt', {
             email,
             requestId: req.requestId
         });
-        return res.render("login", {
-            message: "Email and password are required."
-        });
-    }
 
-    try {
         const user = await User.findOne({ email })
             .select('+password name email role')
             .lean();
@@ -444,9 +338,7 @@ app.post("/login", async (req, res) => {
                 email,
                 requestId: req.requestId
             });
-            return res.render("login", {
-                message: "No account found. Please sign up first."
-            });
+            throw new NotFoundError('No account found. Please sign up first.');
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
@@ -456,9 +348,7 @@ app.post("/login", async (req, res) => {
                 userId: user._id,
                 requestId: req.requestId
             });
-            return res.render("login", {
-                message: "Incorrect password. Try again."
-            });
+            throw new AuthenticationError('Incorrect password. Try again.');
         }
 
         const token = jwt.sign(
@@ -481,22 +371,9 @@ app.post("/login", async (req, res) => {
         });
 
         res.redirect("/dashboard");
-    } catch (error) {
-        logger.error('Login error', {
-            error: error.message,
-            stack: error.stack,
-            email,
-            requestId: req.requestId
-        });
-        res.status(500).render("login", {
-            message: "Error logging in. Try again."
-        });
-    }
-});
+    })
+);
 
-/**
- * Logout Handler
- */
 app.get("/logout", (req, res) => {
     const userId = req.user?._id;
     if (userId) {
@@ -514,199 +391,136 @@ app.get("/logout", (req, res) => {
 // DASHBOARD ROUTES
 // ============================================
 
-/**
- * Main Dashboard
- */
-app.get("/dashboard", requireAuth, async (req, res) => {
-    try {
-        let appointments = [];
+app.get("/dashboard", requireAuth, asyncHandler(async (req, res) => {
+    let appointments = [];
 
-        if (req.user.role === "patient") {
-            appointments = await Appointment.aggregate([
-                { $match: { patient: req.user._id } },
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "doctor",
-                        foreignField: "_id",
-                        as: "doctorDetails"
-                    }
-                },
-                {
-                    $unwind: {
-                        path: "$doctorDetails",
-                        preserveNullAndEmptyArrays: true
-                    }
-                },
-                {
-                    $project: {
-                        patientName: 1,
-                        patientAge: 1,
-                        symptoms: 1,
-                        date: 1,
-                        status: 1,
-                        "doctorName": "$doctorDetails.name",
-                        "doctorSpecialization": "$doctorDetails.specialization"
-                    }
-                },
-                { $sort: { date: -1 } },
-                { $limit: 50 }
-            ]);
-        }
-
-        logger.debug('Dashboard loaded', {
-            userId: req.user._id,
-            role: req.user.role,
-            appointmentCount: appointments.length,
-            requestId: req.requestId
-        });
-
-        res.render("dashboard", {
-            user: req.user,
-            appointments: appointments || []
-        });
-    } catch (error) {
-        logger.error('Dashboard error', {
-            error: error.message,
-            stack: error.stack,
-            userId: req.user?._id,
-            requestId: req.requestId
-        });
-        res.render("dashboard", {
-            user: req.user,
-            appointments: [],
-            error: "Unable to load appointments"
-        });
+    if (req.user.role === "patient") {
+        appointments = await Appointment.aggregate([
+            { $match: { patient: req.user._id } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "doctor",
+                    foreignField: "_id",
+                    as: "doctorDetails"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$doctorDetails",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $project: {
+                    patientName: 1,
+                    patientAge: 1,
+                    symptoms: 1,
+                    date: 1,
+                    status: 1,
+                    "doctorName": "$doctorDetails.name",
+                    "doctorSpecialization": "$doctorDetails.specialization"
+                }
+            },
+            { $sort: { date: -1 } },
+            { $limit: 50 }
+        ]);
     }
-});
+
+    logger.debug('Dashboard loaded', {
+        userId: req.user._id,
+        role: req.user.role,
+        appointmentCount: appointments.length,
+        requestId: req.requestId
+    });
+
+    res.render("dashboard", {
+        user: req.user,
+        appointments: appointments || []
+    });
+}));
 
 // ============================================
 // DOCTOR ROUTES
 // ============================================
 
-/**
- * Doctors List
- */
-app.get("/doctors", requireAuth, async (req, res) => {
-    try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
+app.get("/doctors", requireAuth, asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-        const [doctors, totalCount] = await Promise.all([
-            User.find({ role: "doctor" })
-                .select('name specialization experience bio')
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            User.countDocuments({ role: "doctor" })
-        ]);
+    const [doctors, totalCount] = await Promise.all([
+        User.find({ role: "doctor" })
+            .select('name specialization experience bio')
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        User.countDocuments({ role: "doctor" })
+    ]);
 
-        logger.debug('Doctors list fetched', {
-            userId: req.user._id,
-            page,
-            limit,
-            count: doctors.length,
-            total: totalCount,
-            requestId: req.requestId
-        });
+    logger.debug('Doctors list fetched', {
+        userId: req.user._id,
+        page,
+        limit,
+        count: doctors.length,
+        total: totalCount,
+        requestId: req.requestId
+    });
 
-        res.render("doctors", {
-            doctors,
-            pagination: {
-                currentPage: page,
-                totalPages: Math.ceil(totalCount / limit),
-                totalCount,
-                limit
-            }
-        });
-    } catch (error) {
-        logger.error('Doctors fetch error', {
-            error: error.message,
-            stack: error.stack,
-            userId: req.user?._id,
-            requestId: req.requestId
-        });
-        res.status(500).send("Error fetching doctors.");
-    }
-});
-
-/**
- * Doctor Profile
- */
-app.get("/doctor/:id", requireAuth, async (req, res) => {
-    try {
-        const doctor = await User.findById(req.params.id)
-            .select('name specialization experience bio email')
-            .lean();
-
-        if (!doctor) {
-            logger.warn('Doctor not found', {
-                doctorId: req.params.id,
-                userId: req.user._id,
-                requestId: req.requestId
-            });
-            return res.status(404).send("Doctor not found");
+    res.render("doctors", {
+        doctors,
+        pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(totalCount / limit),
+            totalCount,
+            limit
         }
+    });
+}));
 
-        res.render("doctorProfile", { doctor });
-    } catch (error) {
-        logger.error('Doctor profile error', {
-            error: error.message,
-            stack: error.stack,
+app.get("/doctor/:id", requireAuth, asyncHandler(async (req, res) => {
+    const doctor = await User.findById(req.params.id)
+        .select('name specialization experience bio email')
+        .lean();
+
+    if (!doctor) {
+        logger.warn('Doctor not found', {
             doctorId: req.params.id,
-            userId: req.user?._id,
+            userId: req.user._id,
             requestId: req.requestId
         });
-        res.status(500).send("Error loading doctor profile");
+        throw new NotFoundError('Doctor not found');
     }
-});
+
+    res.render("doctorProfile", { doctor });
+}));
 
 // ============================================
 // APPOINTMENT ROUTES
 // ============================================
 
-/**
- * Book Appointment
- */
-app.post("/appointment/:doctorId", requireAuth, async (req, res) => {
-    if (req.user.role !== "patient") {
-        logger.warn('Non-patient tried to book appointment', {
-            userId: req.user._id,
-            role: req.user.role,
-            requestId: req.requestId
-        });
-        return res.status(403).send("Only patients can book appointments.");
-    }
+app.post("/appointment/:doctorId", 
+    requireAuth, 
+    validateBody(schemas.appointment),
+    asyncHandler(async (req, res) => {
+        if (req.user.role !== "patient") {
+            logger.warn('Non-patient tried to book appointment', {
+                userId: req.user._id,
+                role: req.user.role,
+                requestId: req.requestId
+            });
+            throw new AuthorizationError('Only patients can book appointments');
+        }
 
-    const { patientName, patientAge, symptoms } = req.body;
-    const doctorId = req.params.doctorId;
+        const { patientName, patientAge, symptoms } = req.body;
+        const doctorId = req.params.doctorId;
 
-    logger.info('Appointment booking attempt', {
-        patientId: req.user._id,
-        doctorId,
-        requestId: req.requestId
-    });
-
-    if (!patientName || !patientAge || !symptoms) {
-        logger.warn('Appointment booking failed: Missing fields', {
+        logger.info('Appointment booking attempt', {
             patientId: req.user._id,
             doctorId,
             requestId: req.requestId
         });
-        return res.status(400).send("All fields are required.");
-    }
 
-    if (patientAge < 0 || patientAge > 150) {
-        logger.warn('Appointment booking failed: Invalid age', {
-            patientId: req.user._id,
-            age: patientAge,
-            requestId: req.requestId
-        });
-        return res.status(400).send("Please enter a valid age.");
-    }
-
-    try {
         const doctor = await User.findById(doctorId)
             .select('_id role')
             .lean();
@@ -717,7 +531,7 @@ app.post("/appointment/:doctorId", requireAuth, async (req, res) => {
                 patientId: req.user._id,
                 requestId: req.requestId
             });
-            return res.status(404).send("Doctor not found.");
+            throw new NotFoundError('Doctor not found');
         }
 
         const appointment = new Appointment({
@@ -740,83 +554,61 @@ app.post("/appointment/:doctorId", requireAuth, async (req, res) => {
         });
 
         res.redirect("/dashboard");
-    } catch (error) {
-        logger.error('Appointment booking error', {
-            error: error.message,
-            stack: error.stack,
-            patientId: req.user?._id,
-            doctorId,
-            requestId: req.requestId
-        });
-        res.status(500).send("Error booking appointment.");
-    }
-});
+    })
+);
 
-/**
- * View Appointments (Doctor)
- */
-app.get("/view-appointments", requireAuth, async (req, res) => {
+app.get("/view-appointments", requireAuth, asyncHandler(async (req, res) => {
     if (req.user.role !== "doctor") {
         logger.warn('Non-doctor tried to view appointments', {
             userId: req.user._id,
             role: req.user.role,
             requestId: req.requestId
         });
-        return res.status(403).send("Access denied.");
+        throw new AuthorizationError('Access denied. Doctor only.');
     }
 
-    try {
-        const appointments = await Appointment.aggregate([
-            { $match: { doctor: req.user._id } },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "patient",
-                    foreignField: "_id",
-                    as: "patientDetails"
-                }
-            },
-            {
-                $unwind: {
-                    path: "$patientDetails",
-                    preserveNullAndEmptyArrays: true
-                }
-            },
-            {
-                $project: {
-                    patientName: 1,
-                    patientAge: 1,
-                    symptoms: 1,
-                    date: 1,
-                    status: 1,
-                    "patientEmail": "$patientDetails.email",
-                    "patientPhone": "$patientDetails.phone"
-                }
-            },
-            { $sort: { date: -1 } },
-            { $limit: 100 }
-        ]);
+    const appointments = await Appointment.aggregate([
+        { $match: { doctor: req.user._id } },
+        {
+            $lookup: {
+                from: "users",
+                localField: "patient",
+                foreignField: "_id",
+                as: "patientDetails"
+            }
+        },
+        {
+            $unwind: {
+                path: "$patientDetails",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $project: {
+                patientName: 1,
+                patientAge: 1,
+                symptoms: 1,
+                date: 1,
+                status: 1,
+                "patientEmail": "$patientDetails.email",
+                "patientPhone": "$patientDetails.phone"
+            }
+        },
+        { $sort: { date: -1 } },
+        { $limit: 100 }
+    ]);
 
-        logger.debug('Appointments viewed by doctor', {
-            doctorId: req.user._id,
-            count: appointments.length,
-            requestId: req.requestId
-        });
+    logger.debug('Appointments viewed by doctor', {
+        doctorId: req.user._id,
+        count: appointments.length,
+        requestId: req.requestId
+    });
 
-        res.render("doctorAppointments", {
-            doctor: req.user,
-            appointments
-        });
-    } catch (error) {
-        logger.error('View appointments error', {
-            error: error.message,
-            stack: error.stack,
-            doctorId: req.user?._id,
-            requestId: req.requestId
-        });
-        res.status(500).send("Error loading appointments.");
-    }
-});
+    res.render("doctorAppointments", {
+        doctor: req.user,
+        appointments
+    });
+}));
 
 // ============================================
 // CONTACT ROUTES
@@ -826,22 +618,21 @@ app.get("/contactus", (req, res) => {
     res.render("contactus");
 });
 
-app.post("/contact", (req, res) => {
-    const { name, email, message } = req.body;
+app.post("/contact",
+    validateBody(schemas.contact),
+    asyncHandler(async (req, res) => {
+        const { name, email, message } = req.body;
 
-    if (!name || !email || !message) {
-        return res.status(400).send("All fields are required.");
-    }
+        logger.info('New contact message', {
+            name,
+            email,
+            messageLength: message.length,
+            requestId: req.requestId
+        });
 
-    logger.info('New contact message', {
-        name,
-        email,
-        messageLength: message.length,
-        requestId: req.requestId
-    });
-
-    res.send("Message received! We will get back to you soon.");
-});
+        res.send("Message received! We will get back to you soon.");
+    })
+);
 
 // ============================================
 // AI & HEALTH ROUTES
@@ -851,45 +642,45 @@ app.get("/healthlinkAI", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "healthlinkAI.html"));
 });
 
-app.post("/analyze-health", async (req, res) => {
-    const userMessage = req.body.message || "Analyze this health report.";
+app.post("/analyze-health",
+    validateBody(schemas.healthAnalysis),
+    asyncHandler(async (req, res) => {
+        const userMessage = req.body.message || "Analyze this health report.";
 
-    logger.info('Health analysis request', {
-        messageLength: userMessage.length,
-        requestId: req.requestId
-    });
-
-    try {
-        const response = await axios.post(
-            "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
-            { inputs: userMessage },
-            {
-                headers: {
-                    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
-                },
-                timeout: 30000
-            }
-        );
-
-        logger.debug('Health analysis successful', {
-            responseLength: response.data[0]?.generated_text?.length || 0,
+        logger.info('Health analysis request', {
+            messageLength: userMessage.length,
             requestId: req.requestId
         });
 
-        res.json({
-            reply: response.data[0]?.generated_text || "No response from AI."
-        });
-    } catch (error) {
-        logger.error('Health analysis error', {
-            error: error.message,
-            stack: error.stack,
-            requestId: req.requestId
-        });
-        res.status(500).json({
-            reply: "AI service temporarily unavailable. Please try again later."
-        });
-    }
-});
+        try {
+            const response = await axios.post(
+                "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
+                { inputs: userMessage },
+                {
+                    headers: {
+                        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+                    },
+                    timeout: 30000
+                }
+            );
+
+            logger.debug('Health analysis successful', {
+                responseLength: response.data[0]?.generated_text?.length || 0,
+                requestId: req.requestId
+            });
+
+            res.json({
+                reply: response.data[0]?.generated_text || "No response from AI."
+            });
+        } catch (error) {
+            logger.error('Health analysis error', {
+                error: error.message,
+                requestId: req.requestId
+            });
+            throw new ExternalServiceError('AI service temporarily unavailable', 'HuggingFace');
+        }
+    })
+);
 
 // ============================================
 // TEAM ROUTES
@@ -912,69 +703,69 @@ const openai = new OpenAI({
 
 const chatRateLimiter = new Map();
 
-app.post("/chat", async (req, res) => {
-    const userMessage = req.body.message;
-    const userId = req.user?._id || req.ip;
+app.post("/chat",
+    validateBody(schemas.chat),
+    asyncHandler(async (req, res) => {
+        const userMessage = req.body.message;
+        const userId = req.user?._id || req.ip;
 
-    if (!userMessage) {
-        return res.status(400).json({
-            reply: "Please provide a message."
-        });
-    }
+        // Rate limiting
+        const userRate = chatRateLimiter.get(userId) || { count: 0, timestamp: Date.now() };
+        if (Date.now() - userRate.timestamp > 60000) {
+            userRate.count = 0;
+            userRate.timestamp = Date.now();
+        }
 
-    // Rate limiting
-    const userRate = chatRateLimiter.get(userId) || { count: 0, timestamp: Date.now() };
-    if (Date.now() - userRate.timestamp > 60000) {
-        userRate.count = 0;
-        userRate.timestamp = Date.now();
-    }
+        if (userRate.count >= 10) {
+            logger.warn('Chat rate limit exceeded', {
+                userId,
+                requestId: req.requestId
+            });
+            return res.status(429).json({
+                success: false,
+                status: 429,
+                message: "Rate limit exceeded. Please try again later.",
+                timestamp: new Date().toISOString()
+            });
+        }
 
-    if (userRate.count >= 10) {
-        logger.warn('Chat rate limit exceeded', {
-            userId,
-            requestId: req.requestId
-        });
-        return res.status(429).json({
-            reply: "Rate limit exceeded. Please try again later."
-        });
-    }
-
-    try {
         userRate.count++;
         chatRateLimiter.set(userId, userRate);
 
-        const response = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
-            messages: [
-                { role: "system", content: "You are a helpful healthcare assistant." },
-                { role: "user", content: userMessage }
-            ],
-            max_tokens: 150,
-            temperature: 0.7,
-        });
+        try {
+            const response = await openai.chat.completions.create({
+                model: "gpt-3.5-turbo",
+                messages: [
+                    { role: "system", content: "You are a helpful healthcare assistant." },
+                    { role: "user", content: userMessage }
+                ],
+                max_tokens: 150,
+                temperature: 0.7,
+            });
 
-        logger.debug('Chat response successful', {
-            userId,
-            messageLength: userMessage.length,
-            responseLength: response.choices[0].message.content.length,
-            requestId: req.requestId
-        });
+            logger.debug('Chat response successful', {
+                userId,
+                messageLength: userMessage.length,
+                responseLength: response.choices[0].message.content.length,
+                requestId: req.requestId
+            });
 
-        res.json({
-            reply: response.choices[0].message.content
-        });
-    } catch (error) {
-        logger.error('Chat error', {
-            error: error.message,
-            stack: error.stack,
-            userId,
-            requestId: req.requestId
-        });
-        res.status(500).json({
-            reply: "Sorry, unable to process your request. Please try again."
-        });
-    }
-});
+            res.json({
+                success: true,
+                reply: response.choices[0].message.content,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            logger.error('Chat error', {
+                error: error.message,
+                stack: error.stack,
+                userId,
+                requestId: req.requestId
+            });
+            throw new ExternalServiceError('Unable to process your request. Please try again.', 'OpenAI');
+        }
+    })
+);
 
 // ============================================
 // HEALTH CHECK ENDPOINT
@@ -997,83 +788,34 @@ app.get("/health", (req, res) => {
 });
 
 // ============================================
-// 404 HANDLER
+// NOT FOUND & ERROR HANDLING
 // ============================================
 
-app.use((req, res) => {
-    logger.warn('404 Not Found', {
-        path: req.path,
-        method: req.method,
-        requestId: req.requestId
-    });
-    res.status(404).json({
-        success: false,
-        status: 404,
-        message: "Route not found",
-        timestamp: new Date().toISOString()
-    });
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // ============================================
-// GLOBAL ERROR HANDLING
+// UNHANDLED REJECTIONS & EXCEPTIONS
 // ============================================
 
-/**
- * Global Error Handler
- * Catches all unhandled errors
- */
-app.use((err, req, res, next) => {
-    logger.error('Unhandled error', {
-        error: err.message,
-        stack: err.stack,
-        path: req.path,
-        method: req.method,
-        requestId: req.requestId,
-        userId: req.user?._id
-    });
-
-    // Check if headers already sent
-    if (res.headersSent) {
-        return next(err);
-    }
-
-    res.status(err.status || 500).json({
-        success: false,
-        status: err.status || 500,
-        message: err.message || "Internal server error",
-        timestamp: new Date().toISOString(),
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-    });
-});
-
-/**
- * Unhandled Promise Rejection Handler
- */
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Promise Rejection', {
+    errorLogger.error('Unhandled Promise Rejection', {
         reason: reason?.message || reason,
         stack: reason?.stack,
         promise: promise
     });
 });
 
-/**
- * Uncaught Exception Handler
- */
 process.on('uncaughtException', (error) => {
-    logger.error('Uncaught Exception', {
+    errorLogger.error('Uncaught Exception', {
         error: error.message,
         stack: error.stack
     });
-    // Graceful shutdown
     setTimeout(() => {
         process.exit(1);
     }, 5000);
 });
 
-/**
- * Graceful Shutdown Handler
- */
 process.on('SIGTERM', () => {
     logger.info('SIGTERM received, shutting down gracefully');
     server.close(() => {
