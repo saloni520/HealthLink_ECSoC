@@ -12,6 +12,8 @@
  * ============================================
  * CUSTOM ERROR CLASSES
  * ============================================
+ */
+
  * Extend native Error class with status codes
  * and error codes for consistent handling
  */
@@ -131,6 +133,8 @@ const errorLogger = {
  * ============================================
  * CENTRALIZED ERROR HANDLING MIDDLEWARE
  * ============================================
+ */
+const errorHandler = (err, req, res, next) => {
  * 
  * This middleware handles all errors thrown in the application.
  * It provides consistent error responses and logging.
@@ -174,6 +178,10 @@ const errorHandler = (err, req, res, next) => {
         errorResponse.code = err.errorCode;
     }
 
+    if (err.details) {
+        errorResponse.errors = err.details;
+    }
+
     // Add validation details if available
     if (err.details) {
         errorResponse.details = err.details;
@@ -184,6 +192,26 @@ const errorHandler = (err, req, res, next) => {
         errorResponse.stack = err.stack;
     }
 
+    // Handle validation errors specially
+    if (err.name === 'ValidationError') {
+        errorResponse.status = 400;
+        errorResponse.code = 'VALIDATION_ERROR';
+        if (!err.details) {
+            errorResponse.message = err.message || 'Validation failed';
+        }
+    } else if (err.name === 'AuthenticationError') {
+        errorResponse.status = 401;
+        errorResponse.code = 'AUTHENTICATION_ERROR';
+    } else if (err.name === 'AuthorizationError') {
+        errorResponse.status = 403;
+        errorResponse.code = 'AUTHORIZATION_ERROR';
+    } else if (err.name === 'NotFoundError') {
+        errorResponse.status = 404;
+        errorResponse.code = 'NOT_FOUND_ERROR';
+    } else if (err.name === 'ConflictError') {
+        errorResponse.status = 409;
+        errorResponse.code = 'CONFLICT_ERROR';
+    } else if (err.name === 'MongoError' || err.name === 'MongoServerError') {
     // Specific error type handling
     if (err.name === 'ValidationError') {
         errorResponse.message = err.message || 'Validation failed';
@@ -264,6 +292,7 @@ const notFoundHandler = (req, res, next) => {
     next(err);
 };
 
+module.exports = {
 /**
  * ============================================
  * EXPORT ALL UTILITIES
@@ -280,6 +309,9 @@ module.exports = {
     ConflictError,
     DatabaseError,
     ExternalServiceError,
+    errorHandler,
+    asyncHandler,
+    notFoundHandler,
 
     // Middleware
     errorHandler,

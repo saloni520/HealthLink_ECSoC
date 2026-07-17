@@ -10,12 +10,16 @@
  * @requires express
  * @requires jsonwebtoken
  * @requires ../models/User
+ * @requires ../utils/validation
  * @requires ../utils/errorHandler
  */
 
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+
+// Import validation utilities
+const { validateBody, schemas } = require("../utils/validation");
 
 // Import error handling utilities
 const {
