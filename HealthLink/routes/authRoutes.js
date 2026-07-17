@@ -12,6 +12,8 @@
  * @requires jsonwebtoken
  * @requires ../models/User
  * @requires ../utils/passwordValidator
+ * @requires ../utils/validation
+ * @requires ../utils/errorHandler
  */
 
 const express = require("express");
@@ -20,9 +22,20 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { validatePassword } = require("../utils/passwordValidator");
 
+// Import validation utilities
+const { validateBody, schemas } = require("../utils/validation");
+
+// Import error handling utilities
+const {
+    asyncHandler,
+    ValidationError,
+    AuthenticationError,
+    NotFoundError,
+    ConflictError
+} = require("../utils/errorHandler");
+
 const router = express.Router();
 
-// Simple logger for auth routes
 const logger = {
     info: (msg, meta = {}) => console.log(`[${new Date().toISOString()}] ℹ️ ${msg}`, meta),
     error: (msg, meta = {}) => console.error(`[${new Date().toISOString()}] ❌ ${msg}`, meta),
@@ -35,19 +48,24 @@ const logger = {
  * ============================================
  * Enhanced with strong password validation
  */
-router.post("/signup", async (req, res) => {
+router.post("/signup",
+    validateBody(schemas.signup),
+    asyncHandler(async (req, res) => {
+        const { name, email, password, role } = req.body;
+
+        logger.info('Signup attempt', {
+            email,
+            role,
+            requestId: req.requestId
+router.post("/signup", asyncHandler(async (req, res) => {
     const { name, email, password, role } = req.body;
 
     // Input validation - Generic error for security
     if (!name || !email || !password || !role) {
         logger.warn('Signup: Missing required fields', { email });
-        return res.status(400).json({
-            success: false,
-            status: 400,
-            message: "All fields are required.",
-            timestamp: new Date().toISOString()
+        throw new ValidationError('All fields are required', {
+            fields: ['name', 'email', 'password', 'role']
         });
-    }
 
     // Email format validation
     const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
@@ -84,6 +102,7 @@ router.post("/signup", async (req, res) => {
                 message: "Account creation failed. Please try again.",
                 timestamp: new Date().toISOString()
             });
+            throw new ConflictError('User already exists. Please login.');
         }
 
         // ============================================
@@ -155,8 +174,47 @@ router.post("/signup", async (req, res) => {
             message: "An error occurred during registration. Please try again.",
             timestamp: new Date().toISOString()
         });
+    })
+);
+    // Check for existing user
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+        logger.warn('Signup: User already exists', { email });
+        throw new ConflictError('User already exists. Please login.');
     }
-});
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const newUser = new User({
+        name,
+        email,
+        password: hashedPassword,
+        role
+    });
+
+    await newUser.save();
+
+    logger.info('Signup: User registered successfully', {
+        userId: newUser._id,
+        email,
+        role
+    });
+
+    res.status(201).json({
+        success: true,
+        status: 201,
+        message: "User registered successfully. Please login.",
+        data: {
+            id: newUser._id,
+            name: newUser.name,
+            email: newUser.email,
+            role: newUser.role
+        },
+        timestamp: new Date().toISOString()
+    });
+}));
 
 /**
  * ============================================
@@ -164,19 +222,23 @@ router.post("/signup", async (req, res) => {
  * ============================================
  * Enhanced with input sanitization and security
  */
-router.post("/login", async (req, res) => {
+router.post("/login",
+    validateBody(schemas.login),
+    asyncHandler(async (req, res) => {
+        const { email, password } = req.body;
+
+        logger.info('Login attempt', {
+            email,
+            requestId: req.requestId
+router.post("/login", asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
     // Input validation - Generic error for security
     if (!email || !password) {
         logger.warn('Login: Missing credentials', { email });
-        return res.status(400).json({
-            success: false,
-            status: 400,
-            message: "Email and password are required.",
-            timestamp: new Date().toISOString()
+        throw new ValidationError('Email and password are required', {
+            fields: ['email', 'password']
         });
-    }
 
     // Sanitize email
     const sanitizedEmail = email.toLowerCase().trim();
@@ -194,6 +256,11 @@ router.post("/login", async (req, res) => {
                 message: "Invalid email or password.",
                 timestamp: new Date().toISOString()
             });
+        // Find user
+        const user = await User.findOne({ email }).select('+password');
+        if (!user) {
+            logger.warn('Login: User not found', { email });
+            throw new NotFoundError('No account found. Please sign up first.');
         }
 
         // Verify password
@@ -209,6 +276,8 @@ router.post("/login", async (req, res) => {
                 message: "Invalid email or password.",
                 timestamp: new Date().toISOString()
             });
+            logger.warn('Login: Invalid password', { email, userId: user._id });
+            throw new AuthenticationError('Incorrect password. Try again.');
         }
 
         // Generate JWT Token
@@ -242,6 +311,14 @@ router.post("/login", async (req, res) => {
             },
             timestamp: new Date().toISOString()
         });
+    })
+);
+    // Find user
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+        logger.warn('Login: User not found', { email });
+        throw new NotFoundError('No account found. Please sign up first.');
+    }
 
     } catch (error) {
         logger.error('Login error', {
@@ -255,7 +332,44 @@ router.post("/login", async (req, res) => {
             message: "An error occurred during login. Please try again.",
             timestamp: new Date().toISOString()
         });
+    // Verify password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+        logger.warn('Login: Invalid password', { email, userId: user._id });
+        throw new AuthenticationError('Incorrect password. Try again.');
     }
-});
+
+    // Generate JWT Token
+    const token = jwt.sign(
+        {
+            id: user._id,
+            role: user.role
+        },
+        process.env.JWT_SECRET || "your_secret_key",
+        { expiresIn: "1h" }
+    );
+
+    logger.info('Login: User logged in successfully', {
+        userId: user._id,
+        email,
+        role: user.role
+    });
+
+    res.status(200).json({
+        success: true,
+        status: 200,
+        message: `Login successful! Welcome, ${user.role}`,
+        data: {
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
+        },
+        timestamp: new Date().toISOString()
+    });
+}));
 
 module.exports = router;
