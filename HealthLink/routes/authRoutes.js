@@ -11,12 +11,14 @@
  * @requires bcryptjs
  * @requires jsonwebtoken
  * @requires ../models/User
+ * @requires ../utils/passwordValidator
  */
 
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { validatePassword } = require("../utils/passwordValidator");
 
 const router = express.Router();
 
@@ -31,11 +33,12 @@ const logger = {
  * ============================================
  * USER REGISTRATION ENDPOINT
  * ============================================
+ * Enhanced with strong password validation
  */
 router.post("/signup", async (req, res) => {
     const { name, email, password, role } = req.body;
 
-    // Input validation
+    // Input validation - Generic error for security
     if (!name || !email || !password || !role) {
         logger.warn('Signup: Missing required fields', { email });
         return res.status(400).json({
@@ -46,26 +49,75 @@ router.post("/signup", async (req, res) => {
         });
     }
 
+    // Email format validation
+    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(email)) {
+        logger.warn('Signup: Invalid email format', { email });
+        return res.status(400).json({
+            success: false,
+            status: 400,
+            message: "Please enter a valid email address.",
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    // Role validation
+    if (!['patient', 'doctor'].includes(role)) {
+        logger.warn('Signup: Invalid role', { email, role });
+        return res.status(400).json({
+            success: false,
+            status: 400,
+            message: "Invalid role specified.",
+            timestamp: new Date().toISOString()
+        });
+    }
+
     try {
         // Check for existing user
         const existingUser = await User.findOne({ email });
         if (existingUser) {
+            // Generic error for security - don't reveal if user exists
             logger.warn('Signup: User already exists', { email });
             return res.status(409).json({
                 success: false,
                 status: 409,
-                message: "User already exists. Please login.",
+                message: "Account creation failed. Please try again.",
                 timestamp: new Date().toISOString()
             });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // ============================================
+        // PASSWORD VALIDATION
+        // ============================================
+        const validationResult = validatePassword(password, { name, email });
+        
+        if (!validationResult.valid) {
+            logger.warn('Signup: Password validation failed', {
+                email,
+                errors: validationResult.errors
+            });
+            
+            // Only return first error for security
+            return res.status(400).json({
+                success: false,
+                status: 400,
+                message: validationResult.errors[0],
+                // In development, return all errors for debugging
+                ...(process.env.NODE_ENV === 'development' && {
+                    errors: validationResult.errors
+                }),
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Hash password with bcrypt (higher salt rounds for security)
+        const saltRounds = 12; // Increased from 10 for better security
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         // Create user
         const newUser = new User({
-            name,
-            email,
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
             password: hashedPassword,
             role
         });
@@ -78,12 +130,12 @@ router.post("/signup", async (req, res) => {
             role
         });
 
+        // Don't expose user ID in response
         res.status(201).json({
             success: true,
             status: 201,
-            message: "User registered successfully. Please login.",
+            message: "Account created successfully. Please login.",
             data: {
-                id: newUser._id,
                 name: newUser.name,
                 email: newUser.email,
                 role: newUser.role
@@ -100,7 +152,7 @@ router.post("/signup", async (req, res) => {
         res.status(500).json({
             success: false,
             status: 500,
-            message: "Error signing up. Please try again.",
+            message: "An error occurred during registration. Please try again.",
             timestamp: new Date().toISOString()
         });
     }
@@ -110,11 +162,12 @@ router.post("/signup", async (req, res) => {
  * ============================================
  * USER LOGIN ENDPOINT
  * ============================================
+ * Enhanced with input sanitization and security
  */
 router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
-    // Input validation
+    // Input validation - Generic error for security
     if (!email || !password) {
         logger.warn('Login: Missing credentials', { email });
         return res.status(400).json({
@@ -125,15 +178,20 @@ router.post("/login", async (req, res) => {
         });
     }
 
+    // Sanitize email
+    const sanitizedEmail = email.toLowerCase().trim();
+
     try {
-        // Find user
-        const user = await User.findOne({ email }).select('+password');
+        // Find user - don't reveal if email exists
+        const user = await User.findOne({ email: sanitizedEmail }).select('+password');
         if (!user) {
-            logger.warn('Login: User not found', { email });
-            return res.status(404).json({
+            // Generic error for security
+            logger.warn('Login: User not found', { email: sanitizedEmail });
+            // Use same message as invalid password to prevent user enumeration
+            return res.status(401).json({
                 success: false,
-                status: 404,
-                message: "No account found. Please sign up first.",
+                status: 401,
+                message: "Invalid email or password.",
                 timestamp: new Date().toISOString()
             });
         }
@@ -141,11 +199,14 @@ router.post("/login", async (req, res) => {
         // Verify password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            logger.warn('Login: Invalid password', { email, userId: user._id });
+            logger.warn('Login: Invalid password', {
+                email: sanitizedEmail,
+                userId: user._id
+            });
             return res.status(401).json({
                 success: false,
                 status: 401,
-                message: "Incorrect password. Try again.",
+                message: "Invalid email or password.",
                 timestamp: new Date().toISOString()
             });
         }
@@ -162,18 +223,18 @@ router.post("/login", async (req, res) => {
 
         logger.info('Login: User logged in successfully', {
             userId: user._id,
-            email,
+            email: sanitizedEmail,
             role: user.role
         });
 
+        // Don't expose user ID in response
         res.status(200).json({
             success: true,
             status: 200,
-            message: `Login successful! Welcome, ${user.role}`,
+            message: "Login successful!",
             data: {
                 token,
                 user: {
-                    id: user._id,
                     name: user.name,
                     email: user.email,
                     role: user.role
@@ -186,12 +247,12 @@ router.post("/login", async (req, res) => {
         logger.error('Login error', {
             error: error.message,
             stack: error.stack,
-            email
+            email: sanitizedEmail
         });
         res.status(500).json({
             success: false,
             status: 500,
-            message: "Error logging in. Try again.",
+            message: "An error occurred during login. Please try again.",
             timestamp: new Date().toISOString()
         });
     }
