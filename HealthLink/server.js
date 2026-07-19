@@ -56,22 +56,8 @@ const {
 // LOGGING SYSTEM
 // ============================================
 
-const logger = {
-    info: (message, meta = {}) => {
-        console.log(`[${new Date().toISOString()}] ℹ️ INFO: ${message}`, meta);
-    },
-    warn: (message, meta = {}) => {
-        console.warn(`[${new Date().toISOString()}] ⚠️ WARN: ${message}`, meta);
-    },
-    error: (message, meta = {}) => {
-        console.error(`[${new Date().toISOString()}] ❌ ERROR: ${message}`, meta);
-    },
-    debug: (message, meta = {}) => {
-        if (process.env.NODE_ENV === 'development') {
-            console.debug(`[${new Date().toISOString()}] 🔍 DEBUG: ${message}`, meta);
-        }
-    }
-};
+const logger = require("./utils/logger");
+const requestLogger = require("./utils/requestLogger");
 
 // ============================================
 // EXPRESS APP INITIALIZATION
@@ -88,6 +74,12 @@ app.use((req, res, next) => {
     res.setHeader('X-Request-Id', req.requestId);
     next();
 });
+
+// ============================================
+// GLOBAL REQUEST LOGGING MIDDLEWARE
+// ============================================
+
+app.use(requestLogger);
 
 // ============================================
 // MIDDLEWARE CONFIGURATION
@@ -281,21 +273,21 @@ app.post("/signup",
         const { name, email, password, role } = req.body;
         
         logger.info('Signup attempt', {
-app.post("/signup", asyncHandler(async (req, res) => {
-    const { name, email, password, role } = req.body;
-    
-    logger.info('Signup attempt', {
-        email,
-        role,
-        requestId: req.requestId
-    });
-
-    if (!name || !email || !password || !role) {
-        logger.warn('Signup failed: Missing required fields', {
             email,
             role,
             requestId: req.requestId
         });
+
+        if (!name || !email || !password || !role) {
+            logger.warn('Signup failed: Missing required fields', {
+                email,
+                role,
+                requestId: req.requestId
+            });
+            throw new ValidationError('All fields are required', {
+                fields: ['name', 'email', 'password', 'role']
+            });
+        }
 
         const existingUser = await User.findOne({ email }).lean();
         if (existingUser) {
@@ -309,42 +301,23 @@ app.post("/signup", asyncHandler(async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({
             name,
-        throw new ValidationError('All fields are required', {
-            fields: ['name', 'email', 'password', 'role']
-        });
-    }
-
-    const existingUser = await User.findOne({ email }).lean();
-    if (existingUser) {
-        logger.warn('Signup failed: User already exists', {
             email,
+            password: hashedPassword,
+            role
+        });
+
+        await newUser.save();
+
+        logger.info('User registered successfully', {
+            userId: newUser._id,
+            email,
+            role,
             requestId: req.requestId
         });
-        throw new ConflictError('User already exists. Please login.');
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
-        name,
-        email,
-        password: hashedPassword,
-        role
-    });
-
-    await newUser.save();
 
         res.redirect("/login");
     })
 );
-    logger.info('User registered successfully', {
-        userId: newUser._id,
-        email,
-        role,
-        requestId: req.requestId
-    });
-
-    res.redirect("/login");
-}));
 
 app.get("/login", checkLoggedIn, (req, res) => {
     res.render("login", { message: null });
@@ -354,13 +327,17 @@ app.post("/login",
     validateBody(schemas.login),
     asyncHandler(async (req, res) => {
         const { email, password } = req.body;
-app.post("/login", asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
 
         logger.info('Login attempt', {
             email,
             requestId: req.requestId
         });
+
+        if (!email || !password) {
+            throw new ValidationError('Email and password are required', {
+                fields: ['email', 'password']
+            });
+        }
 
         const user = await User.findOne({ email })
             .select('+password name email role')
@@ -383,58 +360,29 @@ app.post("/login", asyncHandler(async (req, res) => {
             });
             throw new AuthenticationError('Incorrect password. Try again.');
         }
-        throw new ValidationError('Email and password are required', {
-            fields: ['email', 'password']
+
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 3600000
         });
-    }
 
-    const user = await User.findOne({ email })
-        .select('+password name email role')
-        .lean();
-
-    if (!user) {
-        logger.warn('Login failed: User not found', {
+        logger.info('User logged in successfully', {
+            userId: user._id,
             email,
+            role: user.role,
             requestId: req.requestId
         });
-        throw new NotFoundError('No account found. Please sign up first.');
-    }
 
         res.redirect("/dashboard");
     })
 );
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-        logger.warn('Login failed: Invalid password', {
-            email,
-            userId: user._id,
-            requestId: req.requestId
-        });
-        throw new AuthenticationError('Incorrect password. Try again.');
-    }
-
-    const token = jwt.sign(
-        { id: user._id, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: "1h" }
-    );
-
-    res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 3600000
-    });
-
-    logger.info('User logged in successfully', {
-        userId: user._id,
-        email,
-        role: user.role,
-        requestId: req.requestId
-    });
-
-    res.redirect("/dashboard");
-}));
 
 app.get("/logout", (req, res) => {
     const userId = req.user?._id;
@@ -614,18 +562,6 @@ app.post("/appointment/:doctorId",
             });
             throw new AuthorizationError('Only patients can book appointments');
         }
-app.post("/appointment/:doctorId", requireAuth, asyncHandler(async (req, res) => {
-    if (req.user.role !== "patient") {
-        logger.warn('Non-patient tried to book appointment', {
-            userId: req.user._id,
-            role: req.user.role,
-            requestId: req.requestId
-        });
-        throw new AuthorizationError('Only patients can book appointments');
-    }
-
-    const { patientName, patientAge, symptoms } = req.body;
-    const doctorId = req.params.doctorId;
 
         const { patientName, patientAge, symptoms } = req.body;
         const doctorId = req.params.doctorId;
@@ -635,6 +571,21 @@ app.post("/appointment/:doctorId", requireAuth, asyncHandler(async (req, res) =>
             doctorId,
             requestId: req.requestId
         });
+
+        if (!patientName || !patientAge || !symptoms) {
+            throw new ValidationError('All fields are required', {
+                fields: ['patientName', 'patientAge', 'symptoms']
+            });
+        }
+
+        if (patientAge < 0 || patientAge > 150) {
+            logger.warn('Appointment booking failed: Invalid age', {
+                patientId: req.user._id,
+                age: patientAge,
+                requestId: req.requestId
+            });
+            throw new ValidationError('Please enter a valid age between 0 and 150');
+        }
 
         const doctor = await User.findById(doctorId)
             .select('_id role')
@@ -671,55 +622,6 @@ app.post("/appointment/:doctorId", requireAuth, asyncHandler(async (req, res) =>
         res.redirect("/dashboard");
     })
 );
-
-        throw new ValidationError('All fields are required', {
-            fields: ['patientName', 'patientAge', 'symptoms']
-        });
-    }
-
-    if (patientAge < 0 || patientAge > 150) {
-        logger.warn('Appointment booking failed: Invalid age', {
-            patientId: req.user._id,
-            age: patientAge,
-            requestId: req.requestId
-        });
-        throw new ValidationError('Please enter a valid age between 0 and 150');
-    }
-
-    const doctor = await User.findById(doctorId)
-        .select('_id role')
-        .lean();
-
-    if (!doctor || doctor.role !== "doctor") {
-        logger.warn('Appointment booking failed: Invalid doctor', {
-            doctorId,
-            patientId: req.user._id,
-            requestId: req.requestId
-        });
-        throw new NotFoundError('Doctor not found');
-    }
-
-    const appointment = new Appointment({
-        patientName,
-        patientAge: parseInt(patientAge),
-        symptoms,
-        doctor: doctorId,
-        patient: req.user._id,
-        date: new Date(),
-        status: "Pending",
-    });
-
-    await appointment.save();
-
-    logger.info('Appointment booked successfully', {
-        appointmentId: appointment._id,
-        patientId: req.user._id,
-        doctorId,
-        requestId: req.requestId
-    });
-
-    res.redirect("/dashboard");
-}));
 
 app.get("/view-appointments", requireAuth, asyncHandler(async (req, res) => {
     if (req.user.role !== "doctor") {
@@ -820,25 +722,6 @@ app.post("/analyze-health",
     validateBody(schemas.healthAnalysis),
     asyncHandler(async (req, res) => {
         const userMessage = req.body.message || "Analyze this health report.";
-app.post("/analyze-health", asyncHandler(async (req, res) => {
-    const userMessage = req.body.message || "Analyze this health report.";
-
-    logger.info('Health analysis request', {
-        messageLength: userMessage.length,
-        requestId: req.requestId
-    });
-
-    try {
-        const response = await axios.post(
-            "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
-            { inputs: userMessage },
-            {
-                headers: {
-                    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
-                },
-                timeout: 30000
-            }
-        );
 
         logger.info('Health analysis request', {
             messageLength: userMessage.length,
@@ -874,17 +757,6 @@ app.post("/analyze-health", asyncHandler(async (req, res) => {
         }
     })
 );
-        res.json({
-            reply: response.data[0]?.generated_text || "No response from AI."
-        });
-    } catch (error) {
-        logger.error('Health analysis error', {
-            error: error.message,
-            requestId: req.requestId
-        });
-        throw new ExternalServiceError('AI service temporarily unavailable', 'HuggingFace');
-    }
-}));
 
 // ============================================
 // TEAM ROUTES
